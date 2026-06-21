@@ -432,130 +432,239 @@ if cycle_records:
 is_onboarded = bool(profile_map.get("Calories"))
 
 if not is_onboarded:
-    # Custom Keyframe Animations for a living, swaying pocket garden scene
+
     st.markdown("""
-        <style>
-        @keyframes swayLeft {
-            0%, 100% { transform: rotate(0deg); }
-            50% { transform: rotate(-5deg) skewX(-3deg); }
+    <style>
+
+    @keyframes swayLeft {
+        0%,100% { transform: rotate(0deg); }
+        50% { transform: rotate(-8deg) translateY(-2px); }
+    }
+
+    @keyframes swayRight {
+        0%,100% { transform: rotate(0deg); }
+        50% { transform: rotate(8deg) translateY(-2px); }
+    }
+
+    @keyframes bearFloat {
+        0%,100% { transform: translateY(0px); }
+        50% { transform: translateY(-6px); }
+    }
+
+    @keyframes glowPulse {
+        0%,100% {
+            box-shadow: 0 10px 35px rgba(168,85,247,0.15);
         }
-        @keyframes swayRight {
-            0%, 100% { transform: rotate(0deg); }
-            50% { transform: rotate(6deg) skewX(4deg); }
+        50% {
+            box-shadow: 0 16px 50px rgba(168,85,247,0.28);
         }
-        @keyframes gentlePulse {
-            0%, 100% { transform: scale(1); opacity: 0.9; }
-            50% { transform: scale(1.05); opacity: 1; }
-        }
-        
-        .garden-onboarding {
-            background: rgba(255,255,255,0.6);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255,255,255,0.75);
-            border-radius: 24px;
-            padding: 30px 28px 80px 28px; /* Extra bottom padding to clear the floating garden elements */
-            margin-bottom: 20px;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 12px 35px rgba(239, 111, 147, 0.12);
-            text-align: center;
-            animation: floatIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
-        }
-        
-        /* Interactive dynamic swaying garden elements layered at the base of the welcome card */
-        .garden-floor {
-            position: absolute;
-            bottom: -5px;
-            left: 0;
-            width: 100%;
-            height: 65px;
-            display: flex;
-            justify-content: space-around;
-            align-items: flex-end;
-            padding: 0 15px;
-            pointer-events: none;
-            opacity: 0.85;
-            border-bottom-left-radius: 24px;
-            border-bottom-right-radius: 24px;
-        }
-        
-        .garden-item {
-            font-size: 26px;
-            transform-origin: bottom center;
-            display: inline-block;
-            line-height: 1;
-        }
-        
-        /* Explicit stagger variation to mimic natural wind currents */
-        .item-grass-1 { animation: swayLeft 3.5s ease-in-out infinite; font-size: 22px; }
-        .item-flower-1 { animation: swayRight 4.2s ease-in-out infinite; animation-delay: 0.3s; }
-        .item-grass-2 { animation: swayLeft 2.9s ease-in-out infinite; animation-delay: 0.6s; font-size: 20px; }
-        .item-flower-2 { animation: swayLeft 4.8s ease-in-out infinite; animation-delay: 0.1s; }
-        .item-grass-3 { animation: swayRight 3.2s ease-in-out infinite; animation-delay: 0.8s; font-size: 24px; }
-        .item-flower-3 { animation: swayRight 4.0s ease-in-out infinite; animation-delay: 0.5s; }
-        .item-bear { animation: gentlePulse 3.0s ease-in-out infinite; font-size: 20px; padding-bottom: 12px; }
-        </style>
-        
-        <div class="garden-onboarding">
-            <p class="note-text" style="font-size: 19px; font-weight: 600; margin-bottom: 8px;">🌸 Welcome to Addu's Garden 🧸</p>
-            <p style="font-size: 14.5px; color: var(--ink-soft); margin: 0; font-weight: 500;">Let's set up your custom health parameters baseline right now.</p>
-            
-            <div class="garden-floor">
-                <span class="garden-item item-grass-1">🌱</span>
-                <span class="garden-item item-flower-1">🌷</span>
-                <span class="garden-item item-grass-2">🌿</span>
-                <span class="garden-item item-bear">🧸</span>
-                <span class="garden-item item-flower-2">🌸</span>
-                <span class="garden-item item-grass-3">🌱</span>
-                <span class="garden-item item-flower-3">🌼</span>
-            </div>
+    }
+
+    .garden-card{
+        position:relative;
+        overflow:hidden;
+        text-align:center;
+        padding:28px 24px 90px 24px;
+        margin-bottom:20px;
+
+        background:rgba(255,255,255,0.65);
+        backdrop-filter:blur(18px);
+        -webkit-backdrop-filter:blur(18px);
+
+        border-radius:28px;
+        border:1px solid rgba(255,255,255,0.8);
+
+        animation:glowPulse 5s ease-in-out infinite;
+    }
+
+    .garden-title{
+        font-size:24px;
+        font-weight:700;
+        margin-bottom:10px;
+        color:#7c3aed;
+    }
+
+    .garden-subtitle{
+        font-size:14px;
+        color:#6b7280;
+        margin-bottom:10px;
+    }
+
+    .garden-floor{
+        position:absolute;
+        bottom:0;
+        left:0;
+        width:100%;
+        height:75px;
+
+        display:flex;
+        justify-content:space-evenly;
+        align-items:flex-end;
+
+        padding-bottom:10px;
+
+        background:linear-gradient(
+            to top,
+            rgba(196,181,253,0.45),
+            transparent
+        );
+    }
+
+    .garden-item{
+        display:inline-block;
+        transform-origin:bottom center;
+        line-height:1;
+    }
+
+    .grass1{
+        font-size:32px;
+        animation:swayLeft 3.0s ease-in-out infinite;
+    }
+
+    .grass2{
+        font-size:30px;
+        animation:swayRight 3.7s ease-in-out infinite;
+        animation-delay:.4s;
+    }
+
+    .grass3{
+        font-size:34px;
+        animation:swayLeft 4.2s ease-in-out infinite;
+        animation-delay:.8s;
+    }
+
+    .flower1{
+        font-size:34px;
+        animation:swayRight 4.5s ease-in-out infinite;
+        animation-delay:.3s;
+    }
+
+    .flower2{
+        font-size:34px;
+        animation:swayLeft 5s ease-in-out infinite;
+        animation-delay:.6s;
+    }
+
+    .flower3{
+        font-size:34px;
+        animation:swayRight 4s ease-in-out infinite;
+        animation-delay:.9s;
+    }
+
+    .bear{
+        font-size:28px;
+        animation:bearFloat 2.8s ease-in-out infinite;
+        padding-bottom:10px;
+    }
+
+    </style>
+
+    <div class="garden-card">
+
+        <div class="garden-title">
+            💜 Aduu's Garden 💜
         </div>
+
+        <div class="garden-subtitle">
+            Let's set up your custom health parameters baseline right now.
+        </div>
+
+        <div class="garden-floor">
+
+            <span class="garden-item grass1">🌱</span>
+
+            <span class="garden-item flower1">🌷</span>
+
+            <span class="garden-item grass2">🌿</span>
+
+            <span class="garden-item bear">🧸</span>
+
+            <span class="garden-item flower2">🌸</span>
+
+            <span class="garden-item grass3">🌱</span>
+
+            <span class="garden-item flower3">🌼</span>
+
+        </div>
+
+    </div>
     """, unsafe_allow_html=True)
 
     with st.form("onboarding_form"):
         h_in = st.number_input("Height (cm)", min_value=100, max_value=250, value=160)
         w_in = st.number_input("Weight (kg)", min_value=30.0, max_value=200.0, value=55.0, step=0.1)
-        act_in = st.selectbox("Exercise Frequency / Activity Level", [
-            "Sedentary (Little or no exercise)",
-            "Lightly Active (Light exercise 1-3 days/week)",
-            "Moderately Active (Moderate exercise 3-5 days/week)",
-            "Very Active (Hard exercise 6-7 days/week)"
-        ])
-        submit_setup = st.form_submit_button("Generate My Custom Dashboard", key="cta_onboard")
+
+        act_in = st.selectbox(
+            "Exercise Frequency / Activity Level",
+            [
+                "Sedentary (Little or no exercise)",
+                "Lightly Active (Light exercise 1-3 days/week)",
+                "Moderately Active (Moderate exercise 3-5 days/week)",
+                "Very Active (Hard exercise 6-7 days/week)"
+            ]
+        )
+
+        submit_setup = st.form_submit_button(
+            "Generate My Custom Dashboard",
+            key="cta_onboard"
+        )
 
         if submit_setup:
             try:
                 bmr = 447.593 + (9.247 * w_in) + (3.098 * h_in) - (4.330 * 23)
+
                 multiplier = 1.2
-                if "Lightly" in act_in: multiplier = 1.375
-                elif "Moderately" in act_in: multiplier = 1.55
-                elif "Very" in act_in: multiplier = 1.725
+                if "Lightly" in act_in:
+                    multiplier = 1.375
+                elif "Moderately" in act_in:
+                    multiplier = 1.55
+                elif "Very" in act_in:
+                    multiplier = 1.725
 
                 tdee = bmr * multiplier
+
                 target_cal = round(tdee - 350)
                 target_carbs = round((target_cal * 0.40) / 4)
                 target_protein = round((target_cal * 0.30) / 4)
                 target_fats = round((target_cal * 0.30) / 9)
 
                 updates = {
-                    "Height": str(h_in), "Weight": str(w_in), "ActivityLevel": act_in,
-                    "Calories": str(target_cal), "Carbs": str(target_carbs),
-                    "Protein": str(target_protein), "Fats": str(target_fats)
+                    "Height": str(h_in),
+                    "Weight": str(w_in),
+                    "ActivityLevel": act_in,
+                    "Calories": str(target_cal),
+                    "Carbs": str(target_carbs),
+                    "Protein": str(target_protein),
+                    "Fats": str(target_fats)
                 }
 
                 failures = []
+
                 for field_key, field_val in updates.items():
                     r_id = profile_row_ids.get(field_key)
+
                     if r_id:
-                        ok, err = airtable_patch("Profile", r_id, {"Value": field_val})
-                        if not ok: failures.append(f"{field_key}: {err}")
+                        ok, err = airtable_patch(
+                            "Profile",
+                            r_id,
+                            {"Value": field_val}
+                        )
+
+                        if not ok:
+                            failures.append(f"{field_key}: {err}")
+
                 if failures:
                     st.error("Some values didn't save: " + " | ".join(failures))
                 else:
-                    st.success("Your customized dashboard has been calculated and initialized! Loading...")
-                    st.cache_data.clear(); st.rerun()
-            except Exception as e: st.error(f"Setup Error: {e}")
+                    st.success(
+                        "Your customized dashboard has been calculated and initialized! Loading..."
+                    )
+                    st.cache_data.clear()
+                    st.rerun()
+
+            except Exception as e:
+                st.error(f"Setup Error: {e}")
+
     st.stop()
 # ==========================================
 # 5. HIGH-END ROTATING PHRASE COMPLIMENTS ENGINE
