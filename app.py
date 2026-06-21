@@ -29,6 +29,8 @@ st.markdown("""
         --cream: #fffaf6;
         --ink: #34313c;
         --ink-soft: #8a8694;
+        --lotus-light: #ffb7c5;
+        --lotus-deep: #fa8072;
     }
 
     html, body, [class*="css"], .stMarkdown {
@@ -40,22 +42,6 @@ st.markdown("""
         background: linear-gradient(160deg, #e1f8ee 0%, #fdeef4 42%, #fff3e6 75%, #ffe7ef 100%);
         background-attachment: fixed;
     }
-    .stApp::before, .stApp::after {
-        content: "";
-        position: fixed;
-        border-radius: 50%;
-        filter: blur(85px);
-        opacity: 0.45;
-        z-index: 0;
-        pointer-events: none;
-    }
-    .stApp::before { width: 400px; height: 400px; background: radial-gradient(circle, var(--emerald-soft), transparent 70%); top: -130px; left: -110px; animation: drift 15s ease-in-out infinite; }
-    .stApp::after { width: 460px; height: 460px; background: radial-gradient(circle, var(--rose-soft), transparent 70%); bottom: -150px; right: -130px; animation: drift 18s ease-in-out infinite reverse; }
-
-    @keyframes drift {
-        0%, 100% { transform: translate(0,0) scale(1); }
-        50% { transform: translate(25px, -20px) scale(1.06); }
-    }
 
     @keyframes floatIn {
         from { opacity: 0; transform: translateY(14px); }
@@ -66,7 +52,7 @@ st.markdown("""
         to   { opacity: 1; transform: scale(1); }
     }
     @keyframes flicker {
-        0%, 100% { transform: scale(1) rotate(0deg); }
+        0%, 100__% { transform: scale(1) rotate(0deg); }
         50% { transform: scale(1.15) rotate(-4deg); }
     }
 
@@ -214,21 +200,61 @@ st.markdown("""
     }
     .bloom-divider span { padding: 0 12px; font-size: 14px; }
 
-    /* ---- Cycle companion card ---- */
+    /* ---- Cycle companion card with Shifting Skin-Tone Flow Gradient ---- */
     .cycle-card {
-        display: flex; align-items: center; gap: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         border-radius: 20px;
         padding: 16px 18px;
         margin-bottom: 10px;
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.65);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.04);
         animation: floatIn 0.6s ease both;
     }
-    .cycle-active { background: linear-gradient(135deg, rgba(255,182,200,0.5), rgba(255,255,255,0.5)); box-shadow: 0 8px 20px rgba(239,111,147,0.16); }
-    .cycle-idle { background: linear-gradient(135deg, rgba(143,227,196,0.4), rgba(255,255,255,0.5)); box-shadow: 0 8px 20px rgba(31,169,122,0.11); }
+    
+    /* Blends from Soft Jade Mint through Milky Cream into soft muted Light Pink */
+    .cycle-idle { 
+        background: linear-gradient(90deg, 
+            rgba(143, 227, 196, 0.45) 0%, 
+            rgba(255, 250, 246, 0.70) 60%, 
+            rgba(255, 209, 222, 0.60) 100
+        ) !important;
+    }
+    
+    /* Active State Flow direction flipped gracefully */
+    .cycle-active { 
+        background: linear-gradient(90deg, 
+            rgba(255, 182, 200, 0.55) 0%, 
+            rgba(255, 250, 246, 0.70) 60%, 
+            rgba(143, 227, 196, 0.50) 100
+        ) !important;
+    }
+    
+    .cycle-left-layout {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
     .cycle-icon { font-size: 27px; }
     .cycle-title { font-weight: 700; font-size: 14.5px; color: var(--ink); }
     .cycle-sub { font-size: 12.5px; color: var(--ink-soft); margin-top: 1px; }
+
+    /* Translucent Right Aligned Countdown Badge */
+    .cycle-countdown-pill {
+        font-family: 'Fraunces', serif;
+        font-weight: 600;
+        font-style: italic;
+        font-size: 14px;
+        color: #5a5465;
+        background: rgba(255, 255, 255, 0.5);
+        padding: 5px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        white-space: nowrap;
+    }
 
     /* Cycle outlook banner */
     .cycle-outlook {
@@ -255,18 +281,19 @@ st.markdown("""
     .stButton>button:hover, .stFormSubmitButton>button:hover { transform: translateY(-1px); }
     .stButton>button:active, .stFormSubmitButton>button:active { transform: translateY(0px); }
 
+    /* Re-styled as elegant light pinkish lotus tone inputs */
     div[class*="st-key-start_cycle_btn"] button {
-        background: linear-gradient(135deg, var(--rose) 0%, var(--rose-deep) 100%) !important;
+        background: linear-gradient(135deg, var(--lotus-light) 0%, var(--lotus-deep) 100%) !important;
         color: white !important;
         padding: 0 24px; height: 2.5em;
-        box-shadow: 0 6px 16px rgba(239,111,147,0.32);
+        box-shadow: 0 6px 16px rgba(255,183,197,0.32);
         position: relative; overflow: hidden;
     }
     div[class*="st-key-end_cycle_btn"] button {
-        background: linear-gradient(135deg, var(--emerald) 0%, var(--emerald-deep) 100%) !important;
+        background: linear-gradient(135deg, var(--lotus-light) 0%, var(--lotus-deep) 100%) !important;
         color: white !important;
         padding: 0 24px; height: 2.5em;
-        box-shadow: 0 6px 16px rgba(31,169,122,0.28);
+        box-shadow: 0 6px 16px rgba(255,183,197,0.32);
         position: relative; overflow: hidden;
     }
 
@@ -676,31 +703,68 @@ if cycle_banner:
     if tone == "upcoming": st.markdown(f'<div class="milestone-line">🗓️ {text}</div>', unsafe_allow_html=True)
     else: st.markdown(f'<div class="cycle-outlook outlook-{tone}">{text}</div>', unsafe_allow_html=True)
 
+# --- DYNAMIC X DAYS COUNTDOWN CALCULATOR ---
+days_display_text = ""
+if all_starts:
+    last_start = all_starts[-1]
+    if is_period_active:
+        expected_end = last_start + timedelta(days=5)
+        if today_date <= expected_end:
+            days_left = (expected_end - today_date).days
+            days_display_text = f"~{days_left} day{'s' if days_left != 1 else ''} left"
+        else:
+            days_over = (today_date - expected_end).days
+            days_display_text = f"Day {5 + days_over}"
+    else:
+        predicted_next = last_start + timedelta(days=avg_cycle_len)
+        if today_date < predicted_next:
+            days_until = (predicted_next - today_date).days
+            days_display_text = f"{days_until} day{'s' if days_until != 1 else ''} away"
+        elif today_date == predicted_next:
+            days_display_text = "Due today 🌷"
+        else:
+            days_late = (today_date - predicted_next).days
+            days_display_text = f"{days_late} day{'s' if days_late != 1 else ''} late"
+
+current_date_obj = now.date()
+
 if is_period_active:
-    st.markdown("""
+    st.markdown(f"""
         <div class="cycle-card cycle-active">
-            <div class="cycle-icon">🌷</div>
-            <div>
-                <div class="cycle-title">Cycle is active</div>
-                <div class="cycle-sub">Take it slow today, love — warm tea, rest, zero pressure.</div>
+            <div class="cycle-left-layout">
+                <div class="cycle-icon">🌷</div>
+                <div>
+                    <div class="cycle-title">Cycle is active</div>
+                    <div class="cycle-sub">Take it slow today, love — warm tea, rest, zero pressure.</div>
+                </div>
             </div>
+            {"<div class='cycle-countdown-pill'>" + days_display_text + "</div>" if days_display_text else ""}
         </div>
     """, unsafe_allow_html=True)
-    if st.button("🌸 Mark as ended", key="end_cycle_btn"):
+    
+    active_btn_label = "🌸 Ended today" if last_start_date == current_date_obj else "🌸 Mark as ended"
+    
+    if st.button(active_btn_label, key="end_cycle_btn"):
         ok, err = airtable_patch("Cycles", active_row_id, {"End Date": today_str})
         if ok: st.cache_data.clear(); st.rerun()
         else: st.error(f"Error updating cycle: {err}")
 else:
-    st.markdown("""
+    st.markdown(f"""
         <div class="cycle-card cycle-idle">
-            <div class="cycle-icon">🌿</div>
-            <div>
-                <div class="cycle-title">No active cycle</div>
-                <div class="cycle-sub">Tap below whenever it starts — I'll take it from there.</div>
+            <div class="cycle-left-layout">
+                <div class="cycle-icon">🌿</div>
+                <div>
+                    <div class="cycle-title">No active cycle</div>
+                    <div class="cycle-sub">Log it here when it starts — I'll take it from there.</div>
+                </div>
             </div>
+            {"<div class='cycle-countdown-pill'>" + days_display_text + "</div>" if days_display_text else ""}
         </div>
     """, unsafe_allow_html=True)
-    if st.button("🩸 Period started today", key="start_cycle_btn"):
+    
+    idle_btn_label = "🩸 Started today" if last_end_date == current_date_obj else "🩸 Period started today"
+    
+    if st.button(idle_btn_label, key="start_cycle_btn"):
         ok, err = airtable_post("Cycles", {"Start Date": today_str, "Notes": "Logged via Companion App Dashboard"})
         if ok: st.cache_data.clear(); st.rerun()
         else: st.error(f"Error saving cycle start: {err}")
@@ -783,7 +847,8 @@ with st.expander("✨ Log a milestone / moment", expanded=False):
         moment_date = st.date_input("When did this happen?", value=now.date())
         moment_text = st.text_input("What did you achieve?", placeholder="e.g., Left Sugar, Finished Exam Block")
         show_on_top_check = st.checkbox("Pin to top highlight banner?", value=True)
-        if st.form_submit_button("Save Moment", key="cta_moment"):
+        submit_moment = st.form_submit_button("Save Moment", key="cta_moment")
+        if submit_moment and moment_text:
             try:
                 clean_moment = moment_text.strip().title()
                 ok, err = airtable_post("Moments", {"Date": moment_date.strftime("%Y-%m-%d"), "Moment": clean_moment, "Show On Top": show_on_top_check})
