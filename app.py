@@ -1,6 +1,6 @@
 import streamlit as st
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import json
 from collections import Counter
 import altair as alt
@@ -10,74 +10,274 @@ from google.genai import types
 from pydantic import BaseModel, Field
 
 # ==========================================
-# 1. PAGE SETUP & GLASSMORPHISM STYLING
+# 1. PAGE SETUP & "POCKET GARDEN" GLASSMORPHISM STYLING
 # ==========================================
-st.set_page_config(page_title="Pocket Health Tracker", page_icon="🧸", layout="centered")
+st.set_page_config(page_title="Pocket Health Tracker", page_icon="🌷", layout="centered")
 
-# Custom UI CSS for Emerald Green + Rose Pink Glassmorphism Look
+# Design tokens: emerald + rose, warm serif for the "love note" voice,
+# rounded sans for everything functional. Two soft blurred blobs give the
+# background depth instead of a flat gradient. Animation is one-shot
+# (fade/bloom on load) rather than looping, so it reads considered, not busy.
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap');
-    
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Quicksand:wght@400;500;600;700&display=swap');
+
+    :root {
+        --emerald: #1fa97a;
+        --emerald-deep: #168a63;
+        --emerald-soft: #8fe3c4;
+        --rose: #ef6f93;
+        --rose-deep: #e0527b;
+        --rose-soft: #ffd1de;
+        --gold: #f4b942;
+        --cream: #fffaf6;
+        --ink: #34313c;
+        --ink-soft: #8a8694;
+    }
+
     html, body, [class*="css"], .stMarkdown {
-        font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-family: 'Quicksand', -apple-system, BlinkMacSystemFont, sans-serif;
+        color: var(--ink);
     }
-    
-    /* Elegant Background Gradient for the page wrapper */
+
     .stApp {
-        background: linear-gradient(135deg, #e8f5e9 0%, #fce4ec 100%);
+        background: linear-gradient(160deg, #eafaf2 0%, #fdf2f6 55%, #fff7f0 100%);
+        background-attachment: fixed;
     }
-    
-    /* Intro / Accent Box Styling */
-    .intro-box {
-        background: rgba(255, 255, 255, 0.45);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.6);
-        border-radius: 16px;
-        padding: 20px;
+    .stApp::before, .stApp::after {
+        content: "";
+        position: fixed;
+        border-radius: 50%;
+        filter: blur(75px);
+        opacity: 0.40;
+        z-index: 0;
+        pointer-events: none;
+    }
+    .stApp::before { width: 360px; height: 360px; background: var(--emerald-soft); top: -130px; left: -110px; }
+    .stApp::after { width: 420px; height: 420px; background: var(--rose-soft); bottom: -150px; right: -130px; }
+
+    @keyframes floatIn {
+        from { opacity: 0; transform: translateY(14px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes blossom {
+        from { opacity: 0; transform: scale(0.86); }
+        to   { opacity: 1; transform: scale(1); }
+    }
+    @keyframes flicker {
+        0%, 100% { transform: scale(1) rotate(0deg); }
+        50% { transform: scale(1.15) rotate(-4deg); }
+    }
+
+    /* ---- Title ---- */
+    .app-title {
+        font-family: 'Fraunces', serif;
+        font-weight: 600;
+        font-size: 30px;
         text-align: center;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 15px rgba(244, 143, 177, 0.15);
+        margin: 4px 0 0 0;
+        background: linear-gradient(100deg, var(--emerald-deep) 10%, var(--rose-deep) 90%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: floatIn 0.6s ease both;
     }
-    
-    /* Premium Glassmorphism Metric Cards */
-    .glass-metric {
-        background: rgba(255, 255, 255, 0.5);
+    .app-subtitle {
+        text-align: center;
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        margin-bottom: 18px;
+        animation: floatIn 0.6s ease both;
+    }
+
+    /* ---- Greeting "note" card ---- */
+    .note-card {
+        background: rgba(255,255,255,0.55);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(255,255,255,0.7);
+        border-radius: 22px;
+        padding: 24px 26px 20px 26px;
+        margin-bottom: 16px;
+        box-shadow: 0 10px 30px rgba(239, 111, 147, 0.14);
+        position: relative;
+        animation: floatIn 0.7s ease both;
+    }
+    .note-card::before {
+        content: "🌿";
+        position: absolute;
+        top: -15px; left: 22px;
+        font-size: 18px;
+        background: var(--cream);
+        border-radius: 50%;
+        width: 32px; height: 32px;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    }
+    .note-text {
+        font-family: 'Fraunces', serif;
+        font-style: italic;
+        font-weight: 500;
+        font-size: 17px;
+        line-height: 1.65;
+        color: #4a4654;
+        text-align: center;
+        margin: 0;
+    }
+
+    /* ---- Streak pill ---- */
+    .streak-pill {
+        display: inline-flex; align-items: center; gap: 7px;
+        background: linear-gradient(135deg, #fff3e0, #ffe3ec);
+        border-radius: 999px;
+        padding: 7px 18px;
+        font-weight: 700;
+        font-size: 13.5px;
+        box-shadow: 0 4px 14px rgba(244,185,66,0.22);
+        margin-bottom: 8px;
+        animation: floatIn 0.7s ease both;
+    }
+    .streak-pill .flame { display: inline-block; animation: flicker 1.8s ease-in-out infinite; }
+
+    .milestone-line {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        margin: 3px 2px;
+        animation: floatIn 0.6s ease both;
+    }
+
+    /* ---- Section labels ---- */
+    .section-eyebrow {
+        font-weight: 700;
+        font-size: 12.5px;
+        letter-spacing: 0.10em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        margin: 26px 2px 12px 2px;
+    }
+
+    /* ---- Bloom macro cards ---- */
+    .bloom-card {
+        background: rgba(255,255,255,0.55);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
-        border-radius: 16px;
-        padding: 18px;
-        margin: 8px 0px;
+        border: 1px solid rgba(255,255,255,0.65);
+        border-radius: 20px;
+        padding: 18px 8px 14px 8px;
         text-align: center;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.03);
-        transition: transform 0.2s ease;
+        margin: 6px 0 10px 0;
+        box-shadow: 0 8px 22px rgba(0,0,0,0.05);
+        animation: blossom 0.5s ease both;
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
     }
-    .glass-metric:hover { transform: translateY(-2px); }
-    .metric-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
-    .metric-value { font-size: 26px; font-weight: 700; color: #2c3e50; }
-    
-    /* Buttons Custom Design (Emerald Green and Rose Pink styles) */
-    .stButton>button {
-        width: 100%;
-        border-radius: 12px;
-        font-weight: 600;
-        height: 3em;
-        background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%) !important;
-        color: white !important;
+    .bloom-card:hover { transform: translateY(-3px); box-shadow: 0 14px 28px rgba(0,0,0,0.08); }
+    .bloom-ring {
+        width: 72px; height: 72px;
+        border-radius: 50%;
+        margin: 0 auto 10px auto;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .bloom-inner {
+        width: 54px; height: 54px;
+        border-radius: 50%;
+        background: var(--cream);
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
+    }
+    .bloom-icon { font-size: 21px; }
+    .bloom-label { font-weight: 700; font-size: 13px; color: var(--ink); margin-top: 1px; letter-spacing: 0.01em; }
+    .bloom-value { font-family: 'Fraunces', serif; font-weight: 600; font-size: 19px; color: var(--ink); margin-top: 1px; }
+    .bloom-unit { font-size: 11.5px; font-weight: 500; color: var(--ink-soft); margin-left: 2px; }
+    .bloom-target { font-size: 11px; color: var(--ink-soft); margin-top: 1px; }
+
+    /* ---- Flourish divider ---- */
+    .bloom-divider {
+        display: flex; align-items: center; justify-content: center;
+        margin: 8px 0 6px 0;
+        color: var(--ink-soft);
+    }
+    .bloom-divider::before, .bloom-divider::after {
+        content: ""; flex: 1; height: 1px;
+        background: linear-gradient(to right, transparent, rgba(0,0,0,0.12), transparent);
+    }
+    .bloom-divider span { padding: 0 12px; font-size: 14px; }
+
+    /* ---- Cycle companion card ---- */
+    .cycle-card {
+        display: flex; align-items: center; gap: 14px;
+        border-radius: 20px;
+        padding: 16px 18px;
+        margin-bottom: 10px;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        animation: floatIn 0.6s ease both;
+    }
+    .cycle-active { background: linear-gradient(135deg, rgba(255,182,200,0.5), rgba(255,255,255,0.5)); box-shadow: 0 8px 20px rgba(239,111,147,0.16); }
+    .cycle-idle { background: linear-gradient(135deg, rgba(143,227,196,0.4), rgba(255,255,255,0.5)); box-shadow: 0 8px 20px rgba(31,169,122,0.11); }
+    .cycle-icon { font-size: 27px; }
+    .cycle-title { font-weight: 700; font-size: 14.5px; color: var(--ink); }
+    .cycle-sub { font-size: 12.5px; color: var(--ink-soft); margin-top: 1px; }
+
+    /* ---- Buttons: auto-width pills by default ---- */
+    .stButton>button, .stFormSubmitButton>button {
+        border-radius: 999px;
+        font-weight: 700;
+        font-family: 'Quicksand', sans-serif;
         border: none;
-        box-shadow: 0 4px 10px rgba(46, 204, 113, 0.2);
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
     }
-    
-    /* Special Period Button Styles */
-    .period-start-btn>button {
-        background: linear-gradient(135deg, #ff7675 0%, #d63031 100%) !important;
-        box-shadow: 0 4px 10px rgba(214, 48, 49, 0.2);
+    .stButton>button:hover, .stFormSubmitButton>button:hover { transform: translateY(-1px); }
+    .stButton>button:active, .stFormSubmitButton>button:active { transform: translateY(0px); }
+
+    /* Period toggle — small pill, NOT full width */
+    div[class*="st-key-start_cycle_btn"] button {
+        background: linear-gradient(135deg, var(--rose) 0%, var(--rose-deep) 100%) !important;
+        color: white !important;
+        padding: 0 24px; height: 2.5em;
+        box-shadow: 0 6px 16px rgba(239,111,147,0.32);
     }
-    .period-end-btn>button {
-        background: linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%) !important;
-        box-shadow: 0 4px 10px rgba(108, 92, 231, 0.2);
+    div[class*="st-key-end_cycle_btn"] button {
+        background: linear-gradient(135deg, var(--emerald) 0%, var(--emerald-deep) 100%) !important;
+        color: white !important;
+        padding: 0 24px; height: 2.5em;
+        box-shadow: 0 6px 16px rgba(31,169,122,0.28);
     }
+
+    /* Quick-log favorite chips — small + light */
+    div[class*="st-key-btn_"] button {
+        background: rgba(255,255,255,0.6) !important;
+        color: var(--ink) !important;
+        border: 1px solid rgba(0,0,0,0.07) !important;
+        padding: 0 14px; height: 2.15em;
+        font-size: 12.5px;
+        font-weight: 600;
+        box-shadow: none;
+    }
+    div[class*="st-key-btn_"] button:hover { background: rgba(255,255,255,0.92) !important; }
+
+    /* Primary CTAs (form submits) — full width gradient */
+    div[class*="st-key-cta_"] button {
+        width: 100%;
+        height: 2.9em;
+        background: linear-gradient(135deg, var(--emerald) 0%, var(--rose) 100%) !important;
+        color: white !important;
+        box-shadow: 0 8px 18px rgba(239,111,147,0.24);
+    }
+
+    /* Expanders */
+    div[data-testid="stExpander"] {
+        background: rgba(255,255,255,0.42) !important;
+        border-radius: 18px !important;
+        border: 1px solid rgba(255,255,255,0.6) !important;
+        backdrop-filter: blur(8px);
+        margin-bottom: 12px;
+        overflow: hidden;
+    }
+    div[data-testid="stExpander"] summary { font-weight: 700 !important; }
+
+    hr { border-color: rgba(0,0,0,0.06) !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -93,7 +293,13 @@ BASE_ID = st.secrets["AIRTABLE_BASE_ID"]
 headers = {"Authorization": f"Bearer {AIRTABLE_TOKEN}", "Content-Type": "application/json"}
 
 client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
-today_str = datetime.now().strftime("%Y-%m-%d")
+
+# India is a single timezone (UTC+5:30, no DST), so a fixed offset is exact —
+# this is the fix for the "good morning at 1pm" bug, which happened because
+# datetime.now() was reading the server's UTC clock instead of her local time.
+IST = timezone(timedelta(hours=5, minutes=30))
+now = datetime.now(IST)
+today_str = now.strftime("%Y-%m-%d")
 
 # ==========================================
 # 2. DATA ACQUISITION PIPELINE
@@ -141,7 +347,7 @@ if cycle_records:
 is_onboarded = bool(profile_map.get("Calories"))
 
 if not is_onboarded:
-    st.markdown('<div class="intro-box"><h3>🌸 Welcome to Your Companion Tracker 🧸</h3><p>Let\'s set up your custom health parameters baseline right now.</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="note-card"><p class="note-text">🌸 Welcome to your pocket companion 🧸<br>Let\'s set up her custom health parameters baseline right now.</p></div>', unsafe_allow_html=True)
     with st.form("onboarding_form"):
         h_in = st.number_input("Height (cm)", min_value=100, max_value=250, value=160)
         w_in = st.number_input("Weight (kg)", min_value=30.0, max_value=200.0, value=55.0, step=0.1)
@@ -151,8 +357,8 @@ if not is_onboarded:
             "Moderately Active (Moderate exercise 3-5 days/week)",
             "Very Active (Hard exercise 6-7 days/week)"
         ])
-        submit_setup = st.form_submit_button("Generate My Custom Dashboard")
-        
+        submit_setup = st.form_submit_button("Generate My Custom Dashboard", key="cta_onboard")
+
         if submit_setup:
             try:
                 # Harris-Benedict BMR Calculation for Female Baseline
@@ -161,20 +367,20 @@ if not is_onboarded:
                 if "Lightly" in act_in: multiplier = 1.375
                 elif "Moderately" in act_in: multiplier = 1.55
                 elif "Very" in act_in: multiplier = 1.725
-                
+
                 tdee = bmr * multiplier
                 # Set a healthy, elegant sustainable fitness deficit
                 target_cal = round(tdee - 350)
                 target_carbs = round((target_cal * 0.40) / 4)
                 target_protein = round((target_cal * 0.30) / 4)
                 target_fats = round((target_cal * 0.30) / 9)
-                
+
                 updates = {
                     "Height": str(h_in), "Weight": str(w_in), "ActivityLevel": act_in,
                     "Calories": str(target_cal), "Carbs": str(target_carbs),
                     "Protein": str(target_protein), "Fats": str(target_fats)
                 }
-                
+
                 # Push values seamlessly back to Airtable Profile Table rows
                 for field_key, field_val in updates.items():
                     r_id = profile_row_ids.get(field_key)
@@ -200,7 +406,8 @@ THRESHOLDS = {
 # ==========================================
 # 4. GREETING MACHINE & SUPPORT COMPLIMENTS
 # ==========================================
-st.title("🌸 Pocket Health Companion 🧸")
+st.markdown('<div class="app-title">🌷 Pocket Health Companion 🧸</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="app-subtitle">{now.strftime("%A · %B %d")}</div>', unsafe_allow_html=True)
 
 # Calculate Streak
 logged_dates = set()
@@ -212,14 +419,14 @@ for r in weight_records:
     if ts: logged_dates.add(ts.split(" ")[0])
 
 streak = 0
-check_date = datetime.now()
+check_date = now
 while check_date.strftime("%Y-%m-%d") in logged_dates:
     streak += 1
     check_date -= timedelta(days=1)
 
 # Interactive Index Mapping for Compliment Rotations
-day_of_year = datetime.now().timetuple().tm_yday
-current_hour = datetime.now().hour
+day_of_year = now.timetuple().tm_yday
+current_hour = now.hour
 
 # 20 Specialized Compliments & Supportive Sentences
 phrases_morning = [
@@ -271,17 +478,11 @@ if is_period_active:
     ]
     selected_greeting = period_phrases[day_of_year % 4]
 
-# Display Dynamic Header Glass Card
-st.markdown(f"""
-    <div class="intro-box">
-        <p style="font-size: 16px; font-weight: 600; color: #2c3e50; line-height: 1.5; margin: 0;">
-            {selected_greeting}
-        </p>
-    </div>
-""", unsafe_allow_html=True)
+# Display Dynamic Header Note Card
+st.markdown(f'<div class="note-card"><p class="note-text">{selected_greeting}</p></div>', unsafe_allow_html=True)
 
 if streak > 0:
-    st.markdown(f"🔥 **{streak} Day Consistency Streak!** You are doing incredible.")
+    st.markdown(f'<div class="streak-pill"><span class="flame">🔥</span> {streak} Day Consistency Streak — you are doing incredible</div>', unsafe_allow_html=True)
 
 # Pinned Moments calculations
 for record in moments_records:
@@ -291,12 +492,12 @@ for record in moments_records:
         m_text = fields.get("Moment", "")
         if m_date_str and m_text:
             try:
-                days_since = (datetime.now() - datetime.strptime(m_date_str, "%Y-%m-%d")).days
-                st.markdown(f"✨ **{m_text}:** {days_since} days running! Phenomenal work.")
+                days_since = (now.date() - datetime.strptime(m_date_str, "%Y-%m-%d").date()).days
+                st.markdown(f'<div class="milestone-line">✨ <b>{m_text}:</b> {days_since} days running! Phenomenal work.</div>', unsafe_allow_html=True)
             except Exception: continue
 
 # ==========================================
-# 5. DYNAMIC COLOR METRIC DASHBOARD
+# 5. DYNAMIC COLOR METRIC DASHBOARD ("Bloom" rings)
 # ==========================================
 today_cal, today_protein, today_carbs, today_fats = 0.0, 0.0, 0.0, 0.0
 food_history_pool = []
@@ -314,61 +515,97 @@ for record in diet_records:
 
 def get_status_color(val, low, high, reverse=False):
     if reverse:
-        if val < low: return "#ff4b4b"     # Red (Under target for protein)
-        if val <= high: return "#ffdd57"    # Yellow
-        return "#2ecc71"                   # Green
+        if val < low: return "#ef6f93"      # Rose (Under target for protein)
+        if val <= high: return "#f4b942"    # Gold
+        return "#1fa97a"                    # Emerald
     else:
-        if val < low: return "#2ecc71"     # Green (Below ceiling limits)
-        if val <= high: return "#ffdd57"    # Yellow Warning
-        return "#ff4b4b"                   # Red crossed
+        if val < low: return "#1fa97a"      # Emerald (Below ceiling limits)
+        if val <= high: return "#f4b942"    # Gold Warning
+        return "#ef6f93"                    # Rose crossed
 
 cal_color = get_status_color(today_cal, **THRESHOLDS["Calories"])
 carb_color = get_status_color(today_carbs, **THRESHOLDS["Carbs"])
 fat_color = get_status_color(today_fats, **THRESHOLDS["Fats"])
 prot_color = get_status_color(today_protein, **THRESHOLDS["Protein"])
 
+cal_target = THRESHOLDS["Calories"]["high"]
+carb_target = THRESHOLDS["Carbs"]["high"]
+fat_target = THRESHOLDS["Fats"]["high"]
+prot_target = THRESHOLDS["Protein"]["low"]
+
+def render_bloom_card(icon, label, value, unit, target, color, delay=0.0):
+    try:
+        pct = max(0, min((value / target) * 100, 100)) if target else 0
+    except Exception:
+        pct = 0
+    st.markdown(f"""
+        <div class="bloom-card" style="animation-delay:{delay}s;">
+            <div class="bloom-ring" style="background: conic-gradient({color} {pct:.1f}%, rgba(0,0,0,0.07) 0);">
+                <div class="bloom-inner"><span class="bloom-icon">{icon}</span></div>
+            </div>
+            <div class="bloom-label">{label}</div>
+            <div class="bloom-value">{value:.0f}<span class="bloom-unit">{unit}</span></div>
+            <div class="bloom-target">of {target:.0f}{unit} goal</div>
+        </div>
+    """, unsafe_allow_html=True)
+
 col1, col2 = st.columns(2)
 with col1:
-    st.markdown(f'<div class="glass-metric" style="border-left: 5px solid {cal_color};"><div class="metric-title" style="color:{cal_color if cal_color!="#ffdd57" else "#bba000"}">🔥 Calories</div><div class="metric-value">{today_cal:.1f} / {profile_map.get("Calories")} kcal</div></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="glass-metric" style="border-left: 5px solid {carb_color};"><div class="metric-title" style="color:{carb_color if carb_color!="#ffdd57" else "#bba000"}">🍞 Carbs</div><div class="metric-value">{today_carbs:.1f}g</div></div>', unsafe_allow_html=True)
+    render_bloom_card("🔥", "Calories", today_cal, " kcal", cal_target, cal_color, delay=0.00)
+    render_bloom_card("🍞", "Carbs", today_carbs, "g", carb_target, carb_color, delay=0.10)
 with col2:
-    st.markdown(f'<div class="glass-metric" style="border-left: 5px solid {prot_color};"><div class="metric-title" style="color:{prot_color if prot_color!="#ffdd57" else "#bba000"}">💪 Protein</div><div class="metric-value">{today_protein:.1f}g</div></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="glass-metric" style="border-left: 5px solid {fat_color};"><div class="metric-title" style="color:{fat_color if fat_color!="#ffdd57" else "#bba000"}">🥑 Fats</div><div class="metric-value">{today_fats:.1f}g</div></div>', unsafe_allow_html=True)
+    render_bloom_card("💪", "Protein", today_protein, "g", prot_target, prot_color, delay=0.05)
+    render_bloom_card("🥑", "Fats", today_fats, "g", fat_target, fat_color, delay=0.15)
 
-st.divider()
+st.markdown('<div class="bloom-divider"><span>🌿</span></div>', unsafe_allow_html=True)
 
 # ==========================================
 # 6. MANAGEMENT & ENTRY INPUT MODULES
 # ==========================================
 
-# Smart Period 2-Button Toggle Component
-st.subheader("🩸 Cycle Companion Drawer")
+# Period Companion — redesigned as a soft status card with a small pill
+# action button beside it (not a full-width CTA), so it sits in line with
+# the rest of the UI instead of shouting over it.
+st.markdown('<div class="section-eyebrow">🩷 Cycle Companion</div>', unsafe_allow_html=True)
 if is_period_active:
-    st.markdown("💬 *Cycle currently flagged as active. Take it easy today, princess.*")
-    st.markdown('<div class="period-end-btn">', unsafe_allow_html=True)
-    if st.button("🌸 Period Ended Today", key="end_cycle_btn"):
+    st.markdown("""
+        <div class="cycle-card cycle-active">
+            <div class="cycle-icon">🌷</div>
+            <div>
+                <div class="cycle-title">Cycle is active</div>
+                <div class="cycle-sub">Take it slow today, love — warm tea, rest, zero pressure.</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+    if st.button("🌸 Mark as ended", key="end_cycle_btn"):
         requests.post(f"https://api.airtable.com/v0/{BASE_ID}/Cycles", headers=headers, json={
             "records": [{"fields": {"Date": today_str, "EventType": "Ended"}}]
         })
         st.cache_data.clear()
         st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
 else:
-    st.markdown('<div class="period-start-btn">', unsafe_allow_html=True)
-    if st.button("🩸 Period Started Today", key="start_cycle_btn"):
+    st.markdown("""
+        <div class="cycle-card cycle-idle">
+            <div class="cycle-icon">🌿</div>
+            <div>
+                <div class="cycle-title">No active cycle</div>
+                <div class="cycle-sub">Tap below whenever it starts — I'll take it from there.</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+    if st.button("🩸 Period started today", key="start_cycle_btn"):
         requests.post(f"https://api.airtable.com/v0/{BASE_ID}/Cycles", headers=headers, json={
             "records": [{"fields": {"Date": today_str, "EventType": "Started"}}]
         })
         st.cache_data.clear()
         st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
 
 # Backdate Cycle Fallback Manual Overrides
-with st.expander("🗓️ Retroactively Log Cycle Dates"):
+with st.expander("🗓️ Retroactively log cycle dates"):
     with st.form("manual_cycle_form"):
-        c_date = st.date_input("Event Date", value=datetime.now())
+        c_date = st.date_input("Event Date", value=now.date())
         c_type = st.selectbox("Action State", ["Started", "Ended"])
-        submit_c = st.form_submit_button("Save Cycle Log")
+        submit_c = st.form_submit_button("Save Cycle Log", key="cta_cycle_manual")
         if submit_c:
             requests.post(f"https://api.airtable.com/v0/{BASE_ID}/Cycles", headers=headers, json={
                 "records": [{"fields": {"Date": c_date.strftime("%Y-%m-%d"), "EventType": c_type}}]
@@ -377,14 +614,14 @@ with st.expander("🗓️ Retroactively Log Cycle Dates"):
             st.cache_data.clear()
             st.rerun()
 
-st.divider()
+st.markdown('<div class="bloom-divider"><span>🌸</span></div>', unsafe_allow_html=True)
 
 # Meals and Weight Logging Standard Accordions
 repeated_foods = [food for food, count in Counter(food_history_pool).items() if count >= 3]
 
-with st.expander("📝 Log Food Entries", expanded=False):
-    log_date_target = st.date_input("Logging for which day?", value=datetime.now(), key="diet_log_date")
-    
+with st.expander("📝 Log food entries", expanded=False):
+    log_date_target = st.date_input("Logging for which day?", value=now.date(), key="diet_log_date")
+
     if repeated_foods:
         st.caption("⚡ Quick Log Favorites:")
         cols = st.columns(min(len(repeated_foods), 3))
@@ -396,8 +633,8 @@ with st.expander("📝 Log Food Entries", expanded=False):
 
     default_text = st.session_state.get("her_meal_input", "")
     meal_input = st.text_area("What did you eat?", value=default_text, placeholder="e.g., 1 Banana, 2 Roti, 2 Eggs")
-    submit_meal = st.button("Log Daily Meal Block", key="main_meal_btn")
-    
+    submit_meal = st.button("Log Daily Meal Block", key="cta_meal")
+
     if submit_meal and meal_input:
         with st.spinner("AI calculating customized macros..."):
             try:
@@ -408,12 +645,12 @@ with st.expander("📝 Log Food Entries", expanded=False):
                     config=types.GenerateContentConfig(response_mime_type="application/json", response_schema=MacroData, temperature=0.1),
                 )
                 macros = json.loads(res.text)
-                
-                if log_date_target.strftime("%Y-%m-%d") == datetime.now().strftime("%Y-%m-%d"):
-                    current_time = datetime.now().strftime("%Y-%m-%d %I:%M %p")
+
+                if log_date_target.strftime("%Y-%m-%d") == now.strftime("%Y-%m-%d"):
+                    current_time = now.strftime("%Y-%m-%d %I:%M %p")
                 else:
                     current_time = f"{log_date_target.strftime('%Y-%m-%d')} 10:00 PM"
-                
+
                 data = {"records": [{"fields": {
                     "Timestamp": current_time, "Food Items": clean_meal_text,
                     "Calories": float(macros["calories"]), "Protein": float(macros["protein"]),
@@ -426,16 +663,16 @@ with st.expander("📝 Log Food Entries", expanded=False):
                 st.rerun()
             except Exception as e: st.error(f"Error: {e}")
 
-with st.expander("⚖️ Log Weight Metric", expanded=False):
+with st.expander("⚖️ Log weight metric", expanded=False):
     with st.form("weight_form", clear_on_submit=True):
-        weight_date_target = st.date_input("Logging for which day?", value=datetime.now(), key="w_date_track")
+        weight_date_target = st.date_input("Logging for which day?", value=now.date(), key="w_date_track")
         weight_input = st.number_input("Weight (kg)", min_value=10.0, max_value=250.0, step=0.05, format="%.2f")
-        submit_weight = st.form_submit_button("Log Weight")
-        
+        submit_weight = st.form_submit_button("Log Weight", key="cta_weight")
+
         if submit_weight and weight_input > 10.0:
             try:
-                if weight_date_target.strftime("%Y-%m-%d") == datetime.now().strftime("%Y-%m-%d"):
-                    current_time = datetime.now().strftime("%Y-%m-%d %I:%M %p")
+                if weight_date_target.strftime("%Y-%m-%d") == now.strftime("%Y-%m-%d"):
+                    current_time = now.strftime("%Y-%m-%d %I:%M %p")
                 else:
                     current_time = f"{weight_date_target.strftime('%Y-%m-%d')} 10:00 PM"
                 data = {"records": [{"fields": {"Timestamp": current_time, "Weight": float(weight_input)}}]}
@@ -445,12 +682,12 @@ with st.expander("⚖️ Log Weight Metric", expanded=False):
                 st.rerun()
             except Exception as e: st.error(f"Error: {e}")
 
-with st.expander("✨ Log A Milestone / Moment", expanded=False):
+with st.expander("✨ Log a milestone / moment", expanded=False):
     with st.form("moments_form", clear_on_submit=True):
-        moment_date = st.date_input("When did this happen?", value=datetime.now())
+        moment_date = st.date_input("When did this happen?", value=now.date())
         moment_text = st.text_input("What did you achieve?", placeholder="e.g., Left Sugar, Finished Exam Block")
         show_on_top_check = st.checkbox("Pin to top highlight banner?", value=True)
-        submit_moment = st.form_submit_button("Save Moment")
+        submit_moment = st.form_submit_button("Save Moment", key="cta_moment")
         if submit_moment and moment_text:
             try:
                 clean_moment = moment_text.strip().title()
@@ -463,12 +700,14 @@ with st.expander("✨ Log A Milestone / Moment", expanded=False):
                 st.rerun()
             except Exception as e: st.error(f"Error: {e}")
 
-st.divider()
+st.markdown('<div class="bloom-divider"><span>🌼</span></div>', unsafe_allow_html=True)
 
 # ==========================================
 # 7. ANALYTICS VISUALIZATIONS & CALENDAR MARKERS
 # ==========================================
-st.subheader("Trends & Milestones")
+st.markdown('<div class="section-eyebrow">📈 Trends & Milestones</div>', unsafe_allow_html=True)
+
+CHART_FONT = "Quicksand"
 
 # Build data dictionary for active calendar visualization cells
 milestone_dates = {}
@@ -479,15 +718,17 @@ for r in moments_records:
 
 # Create a clean calendar layout mapping milestones to a floral element marker
 if milestone_dates:
-    st.caption("🌸 Milestone Calendar Map View")
+    st.caption("🌸 Milestone calendar")
     df_milestones = pd.DataFrame(list(milestone_dates.items()), columns=["Date", "Milestone"])
     df_milestones["Marker"] = "🌸"
-    
+
     cal_dots = alt.Chart(df_milestones).mark_text(size=22, baseline='middle').encode(
-        x=alt.X('Date:T', title="Timeline Timeline Map", axis=alt.Axis(format='%b %d', grid=True)),
+        x=alt.X('Date:T', title=None, axis=alt.Axis(format='%b %d', grid=True)),
         text='Marker:N',
         tooltip='Milestone:N'
-    ).properties(height=80)
+    ).properties(height=80).configure_axis(
+        labelFont=CHART_FONT, labelColor="#8a8694", gridColor="#00000010"
+    ).configure_view(strokeOpacity=0)
     st.altair_chart(cal_dots, use_container_width=True)
 
 # Render Calorie Line Area Graph
@@ -498,14 +739,19 @@ for record in reversed(diet_records):
     if ts: chart_diet_data[ts.split(" ")[0]] = chart_diet_data.get(ts.split(" ")[0], 0.0) + float(fields.get("Calories", 0))
 
 if chart_diet_data:
-    st.caption("🔥 Calorie Consumption Curves")
+    st.caption("🔥 Calorie consumption curve")
     df_cal = pd.DataFrame(list(chart_diet_data.items()), columns=["Date", "Calories"]).sort_values("Date")
-    cal_line_color = "#e91e63" if today_cal > THRESHOLDS["Calories"]["high"] else "#2ecc71"
-    
+    cal_line_color = "#ef6f93" if today_cal > THRESHOLDS["Calories"]["high"] else "#1fa97a"
+
     cal_chart = alt.Chart(df_cal).mark_area(
-        line={'color': cal_line_color, 'width': 2.5},
+        line={'color': cal_line_color, 'width': 2.5}, interpolate='monotone',
         color=alt.Gradient(gradient='linear', stops=[alt.GradientStop(color=cal_line_color, offset=0), alt.GradientStop(color='rgba(0,0,0,0)', offset=1)], x1=1, y1=1, x2=1, y2=0)
-    ).encode(x=alt.X('Date:T', axis=alt.Axis(format='%b %d', labelAngle=-45, grid=False)), y=alt.Y('Calories:Q', scale=alt.Scale(zero=False))).properties(height=160).configure_view(strokeOpacity=0)
+    ).encode(
+        x=alt.X('Date:T', title=None, axis=alt.Axis(format='%b %d', labelAngle=-45, grid=False)),
+        y=alt.Y('Calories:Q', title=None, scale=alt.Scale(zero=False))
+    ).properties(height=160).configure_axis(
+        labelFont=CHART_FONT, labelColor="#8a8694"
+    ).configure_view(strokeOpacity=0)
     st.altair_chart(cal_chart, use_container_width=True)
 
 # Render Weight Line Graph
@@ -516,10 +762,15 @@ for record in reversed(weight_records):
     if ts: chart_weight_data[ts.split(" ")[0]] = float(fields.get("Weight", 0))
 
 if chart_weight_data:
-    st.caption("⚖️ Weight Tracking Trend (kg)")
+    st.caption("⚖️ Weight tracking trend (kg)")
     df_weight = pd.DataFrame(list(chart_weight_data.items()), columns=["Date", "Weight"]).sort_values("Date")
-    trend_color = "#2ecc71" if len(df_weight) < 2 or df_weight["Weight"].iloc[-1] <= df_weight["Weight"].iloc[-2] else "#e91e63"
+    trend_color = "#1fa97a" if len(df_weight) < 2 or df_weight["Weight"].iloc[-1] <= df_weight["Weight"].iloc[-2] else "#ef6f93"
     weight_chart = alt.Chart(df_weight).mark_line(
         color=trend_color, point=alt.OverlayMarkDef(color=trend_color, size=40, filled=True), strokeWidth=3, interpolate='monotone'
-    ).encode(x=alt.X('Date:T', axis=alt.Axis(format='%b %d', labelAngle=-45, grid=False)), y=alt.Y('Weight:Q', scale=alt.Scale(zero=False))).properties(height=160).configure_view(strokeOpacity=0)
+    ).encode(
+        x=alt.X('Date:T', title=None, axis=alt.Axis(format='%b %d', labelAngle=-45, grid=False)),
+        y=alt.Y('Weight:Q', title=None, scale=alt.Scale(zero=False))
+    ).properties(height=160).configure_axis(
+        labelFont=CHART_FONT, labelColor="#8a8694"
+    ).configure_view(strokeOpacity=0)
     st.altair_chart(weight_chart, use_container_width=True)
