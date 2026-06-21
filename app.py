@@ -14,10 +14,6 @@ from pydantic import BaseModel, Field
 # ==========================================
 st.set_page_config(page_title="Pocket Health Tracker", page_icon="🌷", layout="centered")
 
-# Design tokens: emerald + rose, warm serif for the "love note" voice,
-# rounded sans for everything functional. Two soft blurred blobs give the
-# background depth instead of a flat gradient. Animation is one-shot
-# (fade/bloom on load) rather than looping, so it reads considered, not busy.
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Quicksand:wght@400;500;600;700&display=swap');
@@ -48,17 +44,17 @@ st.markdown("""
         content: "";
         position: fixed;
         border-radius: 50%;
-        filter: blur(75px);
-        opacity: 0.42;
+        filter: blur(85px);
+        opacity: 0.45;
         z-index: 0;
         pointer-events: none;
     }
-    .stApp::before { width: 380px; height: 380px; background: radial-gradient(circle, var(--emerald-soft), transparent 70%); top: -130px; left: -110px; animation: drift 15s ease-in-out infinite; }
-    .stApp::after { width: 440px; height: 440px; background: radial-gradient(circle, var(--rose-soft), transparent 70%); bottom: -150px; right: -130px; animation: drift 18s ease-in-out infinite reverse; }
+    .stApp::before { width: 400px; height: 400px; background: radial-gradient(circle, var(--emerald-soft), transparent 70%); top: -130px; left: -110px; animation: drift 15s ease-in-out infinite; }
+    .stApp::after { width: 460px; height: 460px; background: radial-gradient(circle, var(--rose-soft), transparent 70%); bottom: -150px; right: -130px; animation: drift 18s ease-in-out infinite reverse; }
 
     @keyframes drift {
         0%, 100% { transform: translate(0,0) scale(1); }
-        50% { transform: translate(20px, -16px) scale(1.08); }
+        50% { transform: translate(25px, -20px) scale(1.06); }
     }
 
     @keyframes floatIn {
@@ -234,7 +230,7 @@ st.markdown("""
     .cycle-title { font-weight: 700; font-size: 14.5px; color: var(--ink); }
     .cycle-sub { font-size: 12.5px; color: var(--ink-soft); margin-top: 1px; }
 
-    /* Cycle outlook banner — predicted-vs-actual regularity message */
+    /* Cycle outlook banner */
     .cycle-outlook {
         border-radius: 14px;
         padding: 10px 16px;
@@ -248,7 +244,7 @@ st.markdown("""
     .outlook-warn { background: linear-gradient(135deg, rgba(239,111,147,0.16), rgba(255,255,255,0.3)); color: var(--rose-deep); border: 1px solid rgba(239,111,147,0.2); }
     .outlook-good { background: linear-gradient(135deg, rgba(31,169,122,0.18), rgba(31,169,122,0.06)); color: var(--emerald-deep); border: 1px solid rgba(31,169,122,0.25); }
 
-    /* ---- Buttons: auto-width pills by default ---- */
+    /* ---- Buttons ---- */
     .stButton>button, .stFormSubmitButton>button {
         border-radius: 999px;
         font-weight: 700;
@@ -259,7 +255,6 @@ st.markdown("""
     .stButton>button:hover, .stFormSubmitButton>button:hover { transform: translateY(-1px); }
     .stButton>button:active, .stFormSubmitButton>button:active { transform: translateY(0px); }
 
-    /* Period toggle — small pill, NOT full width */
     div[class*="st-key-start_cycle_btn"] button {
         background: linear-gradient(135deg, var(--rose) 0%, var(--rose-deep) 100%) !important;
         color: white !important;
@@ -275,7 +270,6 @@ st.markdown("""
         position: relative; overflow: hidden;
     }
 
-    /* Primary CTAs (form submits) — full width gradient */
     div[class*="st-key-cta_"] button {
         width: 100%;
         height: 2.9em;
@@ -285,7 +279,6 @@ st.markdown("""
         position: relative; overflow: hidden;
     }
 
-    /* Shine sweep on hover for the gradient pill/CTA buttons */
     div[class*="st-key-start_cycle_btn"] button::after,
     div[class*="st-key-end_cycle_btn"] button::after,
     div[class*="st-key-cta_"] button::after {
@@ -302,7 +295,6 @@ st.markdown("""
         left: 130%;
     }
 
-    /* Quick-log favorite chips — small + light */
     div[class*="st-key-btn_"] button {
         background: rgba(255,255,255,0.6) !important;
         color: var(--ink) !important;
@@ -314,7 +306,6 @@ st.markdown("""
     }
     div[class*="st-key-btn_"] button:hover { background: rgba(255,255,255,0.92) !important; }
 
-    /* Expanders */
     div[data-testid="stExpander"] {
         background: rgba(255,255,255,0.42) !important;
         border-radius: 18px !important;
@@ -342,9 +333,6 @@ headers = {"Authorization": f"Bearer {AIRTABLE_TOKEN}", "Content-Type": "applica
 
 client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
 
-# India is a single timezone (UTC+5:30, no DST), so a fixed offset is exact —
-# this is the fix for the "good morning at 1pm" bug, which happened because
-# datetime.now() was reading the server's UTC clock instead of her local time.
 IST = timezone(timedelta(hours=5, minutes=30))
 now = datetime.now(IST)
 today_str = now.strftime("%Y-%m-%d")
@@ -352,13 +340,6 @@ today_str = now.strftime("%Y-%m-%d")
 # ==========================================
 # AIRTABLE WRITE HELPERS
 # ==========================================
-# Centralized POST/PATCH with typecast=True (lets Airtable accept a value like
-# "Started"/"Ended" on a Single Select field even if that exact option hasn't
-# been created yet — the most common reason a record silently fails to save)
-# and actual response checking, since requests.post() never raises on its own
-# for a 4xx/5xx response. This is what was causing the cycle log to fail with
-# zero feedback: the POST was firing, Airtable was rejecting it, and the code
-# never looked at the response to notice.
 def airtable_post(table, fields):
     try:
         resp = requests.post(
@@ -366,16 +347,11 @@ def airtable_post(table, fields):
             headers=headers,
             json={"records": [{"fields": fields}], "typecast": True}
         )
-        if resp.ok:
-            return True, None
-        try:
-            err = resp.json().get("error", {})
-            msg = err.get("message") if isinstance(err, dict) else str(err)
-        except Exception:
-            msg = resp.text
-        return False, msg or f"HTTP {resp.status_code}"
-    except Exception as e:
-        return False, str(e)
+        if resp.ok: return True, None
+        try: err = resp.json().get("error", {}).get("message", resp.text)
+        except Exception: err = resp.text
+        return False, err
+    except Exception as e: return False, str(e)
 
 def airtable_patch(table, record_id, fields):
     try:
@@ -384,32 +360,27 @@ def airtable_patch(table, record_id, fields):
             headers=headers,
             json={"records": [{"id": record_id, "fields": fields}], "typecast": True}
         )
-        if resp.ok:
-            return True, None
-        try:
-            err = resp.json().get("error", {})
-            msg = err.get("message") if isinstance(err, dict) else str(err)
-        except Exception:
-            msg = resp.text
-        return False, msg or f"HTTP {resp.status_code}"
-    except Exception as e:
-        return False, str(e)
+        if resp.ok: return True, None
+        try: err = resp.json().get("error", {}).get("message", resp.text)
+        except Exception: err = resp.text
+        return False, err
+    except Exception as e: return False, str(e)
 
 # ==========================================
 # 2. DATA ACQUISITION PIPELINE
 # ==========================================
-@st.cache_data(ttl=5)
+@st.cache_data(ttl=3)
 def fetch_airtable_all(table_name):
     try:
         url = f"https://api.airtable.com/v0/{BASE_ID}/{table_name}?maxRecords=100"
         if table_name in ["Diet", "Weight"]:
             url += "&sort[0][field]=Timestamp&sort[0][direction]=desc"
         elif table_name == "Cycles":
-            url += "&sort[0][field]=Date&sort[0][direction]=desc"
+            # Sort by Start Date horizontally so that the latest row is always indexed at 0
+            url += "&sort[0][field]=Start Date&sort[0][direction]=desc"
         res = requests.get(url, headers=headers).json()
         return res.get("records", [])
-    except Exception:
-        return []
+    except Exception: return []
 
 diet_records = fetch_airtable_all("Diet")
 weight_records = fetch_airtable_all("Weight")
@@ -427,17 +398,37 @@ for r in profile_records:
         profile_map[f_name] = f_val
         profile_row_ids[f_name] = r.get("id")
 
-# Determine Period Active Status
+# ==========================================
+# 3. HORIZONTAL TRACKING CYCLE ENGINE 
+# ==========================================
 is_period_active = False
+last_start_date = None
+last_end_date = None
+active_row_id = None
+
+# Extracting start date, end date, and row metadata chronologically
 if cycle_records:
-    latest_event = cycle_records[0].get("fields", {}).get("EventType", "")
-    if latest_event == "Started":
+    latest_row = cycle_records[0]
+    active_row_id = latest_row.get("id")
+    latest_fields = latest_row.get("fields", {})
+    
+    s_str = latest_fields.get("Start Date", "")
+    e_str = latest_fields.get("End Date", "")
+    
+    if s_str:
+        try: last_start_date = datetime.strptime(s_str, "%Y-%m-%d").date()
+        except Exception: pass
+    if e_str:
+        try: last_end_date = datetime.strptime(e_str, "%Y-%m-%d").date()
+        except Exception: pass
+        
+    # If a Start Date exists but the End Date column remains blank, the cycle is active
+    if s_str and not e_str:
         is_period_active = True
 
 # ==========================================
-# 3. ONBOARDING & AUTOMATIC MACRO MACHINE
+# 4. ONBOARDING WIZARD INTERFACE
 # ==========================================
-# Show setup wizard if Profile values are missing
 is_onboarded = bool(profile_map.get("Calories"))
 
 if not is_onboarded:
@@ -455,15 +446,13 @@ if not is_onboarded:
 
         if submit_setup:
             try:
-                # Harris-Benedict BMR Calculation for Female Baseline
-                bmr = 447.593 + (9.247 * w_in) + (3.098 * h_in) - (4.330 * 23) # Assuming general early 20s age step
+                bmr = 447.593 + (9.247 * w_in) + (3.098 * h_in) - (4.330 * 23)
                 multiplier = 1.2
                 if "Lightly" in act_in: multiplier = 1.375
                 elif "Moderately" in act_in: multiplier = 1.55
                 elif "Very" in act_in: multiplier = 1.725
 
                 tdee = bmr * multiplier
-                # Set a healthy, elegant sustainable fitness deficit
                 target_cal = round(tdee - 350)
                 target_carbs = round((target_cal * 0.40) / 4)
                 target_protein = round((target_cal * 0.30) / 4)
@@ -475,25 +464,20 @@ if not is_onboarded:
                     "Protein": str(target_protein), "Fats": str(target_fats)
                 }
 
-                # Push values seamlessly back to Airtable Profile Table rows
                 failures = []
                 for field_key, field_val in updates.items():
                     r_id = profile_row_ids.get(field_key)
                     if r_id:
                         ok, err = airtable_patch("Profile", r_id, {"Value": field_val})
-                        if not ok:
-                            failures.append(f"{field_key}: {err}")
+                        if not ok: failures.append(f"{field_key}: {err}")
                 if failures:
                     st.error("Some values didn't save: " + " | ".join(failures))
                 else:
                     st.success("Your customized dashboard has been calculated and initialized! Loading...")
-                    st.cache_data.clear()
-                    st.rerun()
-            except Exception as e:
-                st.error(f"Setup Error: {e}")
+                    st.cache_data.clear(); st.rerun()
+            except Exception as e: st.error(f"Setup Error: {e}")
     st.stop()
 
-# Load targets dynamically from Airtable Profile
 THRESHOLDS = {
     "Calories": {"low": float(profile_map.get("Calories", 1400)) - 50, "high": float(profile_map.get("Calories", 1400)), "reverse": False},
     "Carbs": {"low": float(profile_map.get("Carbs", 130)) - 10, "high": float(profile_map.get("Carbs", 130)), "reverse": False},
@@ -502,7 +486,7 @@ THRESHOLDS = {
 }
 
 # ==========================================
-# 4. GREETING MACHINE & SUPPORT COMPLIMENTS
+# 5. HIGH-END ROTATING PHRASE COMPLIMENTS ENGINE
 # ==========================================
 st.markdown('<div class="app-title">🌷 Aduu\'s Garden 🧸</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="app-subtitle">{now.strftime("%A · %B %d")}</div>', unsafe_allow_html=True)
@@ -522,11 +506,7 @@ while check_date.strftime("%Y-%m-%d") in logged_dates:
     streak += 1
     check_date -= timedelta(days=1)
 
-# Interactive Index Mapping for Compliment Rotations
-day_of_year = now.timetuple().tm_yday
-current_hour = now.hour
-
-# 20 Specialized Compliments & Supportive Sentences
+# Pick slot compliments
 phrases_morning = [
     "Good morning, beautiful! 🧸 Wish you have a great day ahead...",
     "Morning sunshine! You look absolutely radiant today, time to conquer the day!",
@@ -556,46 +536,62 @@ phrases_global = [
     "My absolute favorite person to see tracking. Keep shining, beautiful."
 ]
 
-# Pick Base greeting based on timing
-if 6 <= current_hour < 12:
-    selected_greeting = phrases_morning[day_of_year % 4]
-elif 12 <= current_hour < 17:
-    selected_greeting = phrases_afternoon[day_of_year % 4]
-elif 17 <= current_hour < 22:
-    selected_greeting = phrases_evening[day_of_year % 4]
-else:
-    selected_greeting = phrases_global[day_of_year % 8]
+if 5 <= current_hour < 12: selected_greeting = phrases_morning[day_of_year % 4]
+elif 12 <= current_hour < 17: selected_greeting = phrases_afternoon[day_of_year % 4]
+elif 17 <= current_hour < 22: selected_greeting = phrases_evening[day_of_year % 4]
+else: selected_greeting = phrases_global[day_of_year % 8]
 
-# Period Overlay Overrides Greeting entirely with Medical Care messages
 if is_period_active:
-    period_phrases = [
+    selected_greeting = [
         "I know today might feel physically heavy, beautiful. Please make sure to drink some warm water and rest up. Remember I'm always just one call away if you need anything.",
         "Take it slow today, darling. You're doing amazing, and your health comes first. Warm tea and cozy blankets only.",
         "Sending you the biggest comforting vibes. Rest your mind and body today, you look beautiful as always.",
         "Listen to your body today, princess. Don't stress about targets; comfort, warm water, and self-care are your only goals right now."
-    ]
-    selected_greeting = period_phrases[day_of_year % 4]
+    ][day_of_year % 4]
 
-# Display Dynamic Header Note Card
 st.markdown(f'<div class="note-card"><p class="note-text">{selected_greeting}</p></div>', unsafe_allow_html=True)
 
-if streak > 0:
-    st.markdown(f'<div class="streak-pill"><span class="flame">🔥</span> {streak} Day Consistency Streak — you are doing incredible</div>', unsafe_allow_html=True)
+# Build Horizontal Prediction Regularity Messages
+all_starts = []
+for r in reversed(cycle_records):
+    s = r.get("fields", {}).get("Start Date", "")
+    if s:
+        try: all_starts.append(datetime.strptime(s, "%Y-%m-%d").date())
+        except Exception: pass
 
-# Pinned Moments calculations
-for record in moments_records:
-    fields = record.get("fields", {})
-    if fields.get("Show On Top") is True:
-        m_date_str = fields.get("Date", "")
-        m_text = fields.get("Moment", "")
-        if m_date_str and m_text:
-            try:
-                days_since = (now.date() - datetime.strptime(m_date_str, "%Y-%m-%d").date()).days
-                st.markdown(f'<div class="milestone-line">✨ <b>{m_text}:</b> {days_since} days running! Phenomenal work.</div>', unsafe_allow_html=True)
-            except Exception: continue
+avg_cycle_len = 28
+if len(all_starts) >= 2:
+    gaps = [(all_starts[i] - all_starts[i-1]).days for i in range(1, len(all_starts))]
+    clean_gaps = [g for g in gaps if 15 <= g <= 50]
+    if clean_gaps: avg_cycle_len = round(sum(clean_gaps) / len(clean_gaps))
+
+today_date = now.date()
+cycle_banner = None
+
+if all_starts:
+    last_start = all_starts[-1]
+    if is_period_active:
+        if len(all_starts) >= 2:
+            predicted_current = all_starts[-2] + timedelta(days=avg_cycle_len)
+            diff = (last_start - predicted_current).days
+            if diff <= 1: cycle_banner = ("good", "Perfect cycle — started right on time 💚")
+            elif diff <= 4: cycle_banner = ("warn", f"Started {diff} days later than usual — hope you're doing okay 🩷")
+            else: cycle_banner = ("warn", f"Sorry love, this one took {diff} days longer than usual to start 🩷")
+        else:
+            cycle_banner = ("good", "First cycle logged — I'll start tracking her rhythm from here 🌱")
+    else:
+        predicted_next = last_start + timedelta(days=avg_cycle_len)
+        if today_date > predicted_next:
+            days_late = (today_date - predicted_next).days
+            cycle_banner = ("late", f"Running late by {days_late} day{'s' if days_late != 1 else ''} — no pressure, log it whenever it starts 💗")
+        elif today_date == predicted_next:
+            cycle_banner = ("due", "Expected to start today 🌷")
+        else:
+            days_until = (predicted_next - today_date).days
+            cycle_banner = ("upcoming", f"Expected around {predicted_next.strftime('%b %d')} · {days_until} day{'s' if days_until != 1 else ''} away")
 
 # ==========================================
-# 5. DYNAMIC COLOR METRIC DASHBOARD ("Bloom" rings)
+# 6. CHROMATIC METRIC BOARDS ("Bloom" rings)
 # ==========================================
 today_cal, today_protein, today_carbs, today_fats = 0.0, 0.0, 0.0, 0.0
 food_history_pool = []
@@ -611,15 +607,20 @@ for record in diet_records:
         today_carbs += float(fields.get("Carbs", 0))
         today_fats += float(fields.get("Fats", 0))
 
-def get_status_color(val, low, high, reverse=False):
-    if reverse:
-        if val < low: return "#ef6f93"      # Rose (Under target for protein)
-        if val <= high: return "#f4b942"    # Gold
-        return "#1fa97a"                    # Emerald
-    else:
-        if val < low: return "#1fa97a"      # Emerald (Below ceiling limits)
-        if val <= high: return "#f4b942"    # Gold Warning
-        return "#ef6f93"                    # Rose crossed
+if streak > 0:
+    st.markdown(f'<div class="streak-pill"><span class="flame">🔥</span> {streak} Day Consistency Streak — you are doing incredible</div>', unsafe_allow_html=True)
+
+# Pinned Moments
+for record in moments_records:
+    fields = record.get("fields", {})
+    if fields.get("Show On Top") is True:
+        m_date_str = fields.get("Date", "")
+        m_text = fields.get("Moment", "")
+        if m_date_str and m_text:
+            try:
+                days_since = (now.date() - datetime.strptime(m_date_str, "%Y-%m-%d").date()).days
+                st.markdown(f'<div class="milestone-line">✨ <b>{m_text}:</b> {days_since} days running! Phenomenal work.</div>', unsafe_allow_html=True)
+            except Exception: continue
 
 cal_color = get_status_color(today_cal, **THRESHOLDS["Calories"])
 carb_color = get_status_color(today_carbs, **THRESHOLDS["Carbs"])
@@ -632,10 +633,8 @@ fat_target = THRESHOLDS["Fats"]["high"]
 prot_target = THRESHOLDS["Protein"]["low"]
 
 def render_bloom_card(icon, label, value, unit, target, color, delay=0.0):
-    try:
-        pct = max(0, min((value / target) * 100, 100)) if target else 0
-    except Exception:
-        pct = 0
+    try: pct = max(0, min((value / target) * 100, 100)) if target else 0
+    except Exception: pct = 0
     st.markdown(f"""
         <div class="bloom-card" style="animation-delay:{delay}s;">
             <div class="bloom-ring" style="background: conic-gradient({color} {pct:.1f}%, rgba(0,0,0,0.07) 0);">
@@ -658,76 +657,14 @@ with col2:
 st.markdown('<div class="bloom-divider"><span>🌿</span></div>', unsafe_allow_html=True)
 
 # ==========================================
-# 6. MANAGEMENT & ENTRY INPUT MODULES
+# 7. INTERACTIVE STREAMS & HORIZONTAL CONTROLS
 # ==========================================
-
-# ---- Cycle regularity engine ----
-# Reads her Started/Ended history to predict the next start date, then
-# compares reality against that prediction so the banner can say "right on
-# time", "X days late and still waiting", or "that one ran X days long".
-def parse_cycle_events(records):
-    events = []
-    for r in records:
-        f = r.get("fields", {})
-        d, e = f.get("Date"), f.get("EventType")
-        if d and e:
-            try:
-                events.append((datetime.strptime(d, "%Y-%m-%d").date(), e))
-            except Exception:
-                continue
-    events.sort(key=lambda x: x[0])
-    return events
-
-cycle_events = parse_cycle_events(cycle_records)
-start_dates = [d for d, e in cycle_events if e == "Started"]
-
-DEFAULT_CYCLE_LEN = 28
-avg_cycle_len = DEFAULT_CYCLE_LEN
-if len(start_dates) >= 2:
-    gaps = [(start_dates[i] - start_dates[i - 1]).days for i in range(1, len(start_dates))]
-    recent_gaps = [g for g in gaps[-6:] if 10 <= g <= 60]
-    if recent_gaps:
-        avg_cycle_len = round(sum(recent_gaps) / len(recent_gaps))
-
-today_date = now.date()
-cycle_banner = None  # (tone, text)
-
-if start_dates:
-    last_start = start_dates[-1]
-    if is_period_active:
-        if len(start_dates) >= 2:
-            predicted_for_this = start_dates[-2] + timedelta(days=avg_cycle_len)
-            diff = (last_start - predicted_for_this).days
-            if diff <= 1:
-                cycle_banner = ("good", "Perfect cycle — started right on time 💚")
-            elif diff <= 4:
-                cycle_banner = ("warn", f"Started {diff} days later than usual — hope you're doing okay 🩷")
-            else:
-                cycle_banner = ("warn", f"Sorry love, this one took {diff} days longer than usual to start 🩷")
-        else:
-            cycle_banner = ("good", "First cycle logged — I'll start tracking her rhythm from here 🌱")
-    else:
-        predicted_next = last_start + timedelta(days=avg_cycle_len)
-        if today_date > predicted_next:
-            days_late = (today_date - predicted_next).days
-            cycle_banner = ("late", f"Running late by {days_late} day{'s' if days_late != 1 else ''} — no pressure, log it whenever it starts 💗")
-        elif today_date == predicted_next:
-            cycle_banner = ("due", "Expected to start today 🌷")
-        else:
-            days_until = (predicted_next - today_date).days
-            cycle_banner = ("upcoming", f"Expected around {predicted_next.strftime('%b %d')} · {days_until} day{'s' if days_until != 1 else ''} away")
-
-# Period Companion — redesigned as a soft status card with a small pill
-# action button beside it (not a full-width CTA), so it sits in line with
-# the rest of the UI instead of shouting over it.
 st.markdown('<div class="section-eyebrow">🩷 Cycle Companion</div>', unsafe_allow_html=True)
 
 if cycle_banner:
     tone, text = cycle_banner
-    if tone == "upcoming":
-        st.markdown(f'<div class="milestone-line">🗓️ {text}</div>', unsafe_allow_html=True)
-    else:
-        st.markdown(f'<div class="cycle-outlook outlook-{tone}">{text}</div>', unsafe_allow_html=True)
+    if tone == "upcoming": st.markdown(f'<div class="milestone-line">🗓️ {text}</div>', unsafe_allow_html=True)
+    else: st.markdown(f'<div class="cycle-outlook outlook-{tone}">{text}</div>', unsafe_allow_html=True)
 
 if is_period_active:
     st.markdown("""
@@ -739,13 +676,12 @@ if is_period_active:
             </div>
         </div>
     """, unsafe_allow_html=True)
+    # PATCH execution to add End Date horizontally to the open row ID
     if st.button("🌸 Mark as ended", key="end_cycle_btn"):
-        ok, err = airtable_post("Cycles", {"Date": today_str, "EventType": "Ended"})
+        ok, err = airtable_patch("Cycles", active_row_id, {"End Date": today_str})
         if ok:
-            st.cache_data.clear()
-            st.rerun()
-        else:
-            st.error(f"Couldn't save that to Airtable: {err}")
+            st.cache_data.clear(); st.rerun()
+        else: st.error(f"Error updating cycle: {err}")
 else:
     st.markdown("""
         <div class="cycle-card cycle-idle">
@@ -756,32 +692,33 @@ else:
             </div>
         </div>
     """, unsafe_allow_html=True)
+    # POST execution to open a brand-new row horizontally with a Start Date
     if st.button("🩸 Period started today", key="start_cycle_btn"):
-        ok, err = airtable_post("Cycles", {"Date": today_str, "EventType": "Started"})
+        ok, err = airtable_post("Cycles", {"Start Date": today_str, "Notes": "Logged via Companion App Dashboard"})
         if ok:
-            st.cache_data.clear()
-            st.rerun()
-        else:
-            st.error(f"Couldn't save that to Airtable: {err}")
+            st.cache_data.clear(); st.rerun()
+        else: st.error(f"Error saving cycle start: {err}")
 
 # Backdate Cycle Fallback Manual Overrides
 with st.expander("🗓️ Retroactively log cycle dates"):
     with st.form("manual_cycle_form"):
-        c_date = st.date_input("Event Date", value=now.date())
-        c_type = st.selectbox("Action State", ["Started", "Ended"])
+        c_start = st.date_input("Cycle Start Date", value=now.date())
+        c_end = st.date_input("Cycle End Date (Leave blank if ongoing)", value=None)
+        c_notes = st.text_input("Notes", placeholder="e.g., Heavy cramps, PCOD symptoms light")
         submit_c = st.form_submit_button("Save Cycle Log", key="cta_cycle_manual")
         if submit_c:
-            ok, err = airtable_post("Cycles", {"Date": c_date.strftime("%Y-%m-%d"), "EventType": c_type})
+            payload = {"Start Date": c_start.strftime("%Y-%m-%d"), "Notes": c_notes}
+            if c_end: payload["End Date"] = c_end.strftime("%Y-%m-%d")
+            
+            ok, err = airtable_post("Cycles", payload)
             if ok:
                 st.success("Cycle history updated!")
-                st.cache_data.clear()
-                st.rerun()
-            else:
-                st.error(f"Couldn't save that to Airtable: {err}")
+                st.cache_data.clear(); st.rerun()
+            else: st.error(f"Error saving log: {err}")
 
 st.markdown('<div class="bloom-divider"><span>🌸</span></div>', unsafe_allow_html=True)
 
-# Meals and Weight Logging Standard Accordions
+# Meals and Weight Logging Accordions
 repeated_foods = [food for food, count in Counter(food_history_pool).items() if count >= 3]
 
 with st.expander("📝 Log food entries", expanded=False):
@@ -791,8 +728,7 @@ with st.expander("📝 Log food entries", expanded=False):
         st.caption("⚡ Quick Log Favorites:")
         cols = st.columns(min(len(repeated_foods), 3))
         for idx, food in enumerate(repeated_foods[:6]):
-            col_target = cols[idx % 3]
-            if col_target.button(f"➕ {food[:18]}", key=f"btn_{idx}"):
+            if cols[idx % 3].button(f"➕ {food[:18]}", key=f"btn_{idx}"):
                 st.session_state["her_meal_input"] = food.strip().title()
                 st.rerun()
 
@@ -805,17 +741,12 @@ with st.expander("📝 Log food entries", expanded=False):
             try:
                 clean_meal_text = meal_input.strip().title()
                 res = client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=f"Analyze macros for this description: {clean_meal_text}",
+                    model='gemini-2.5-flash', contents=f"Analyze macros for this description: {clean_meal_text}",
                     config=types.GenerateContentConfig(response_mime_type="application/json", response_schema=MacroData, temperature=0.1),
                 )
                 macros = json.loads(res.text)
 
-                if log_date_target.strftime("%Y-%m-%d") == now.strftime("%Y-%m-%d"):
-                    current_time = now.strftime("%Y-%m-%d %I:%M %p")
-                else:
-                    current_time = f"{log_date_target.strftime('%Y-%m-%d')} 10:00 PM"
-
+                current_time = now.strftime("%Y-%m-%d %I:%M %p") if log_date_target.strftime("%Y-%m-%d") == today_str else f"{log_date_target.strftime('%Y-%m-%d')} 10:00 PM"
                 data = {
                     "Timestamp": current_time, "Food Items": clean_meal_text,
                     "Calories": float(macros["calories"]), "Protein": float(macros["protein"]),
@@ -825,10 +756,8 @@ with st.expander("📝 Log food entries", expanded=False):
                 if "her_meal_input" in st.session_state: del st.session_state["her_meal_input"]
                 if ok:
                     st.success("Macros tracked successfully!")
-                    st.cache_data.clear()
-                    st.rerun()
-                else:
-                    st.error(f"Couldn't save that to Airtable: {err}")
+                    st.cache_data.clear(); st.rerun()
+                else: st.error(f"Error saving to Airtable: {err}")
             except Exception as e: st.error(f"Error: {e}")
 
 with st.expander("⚖️ Log weight metric", expanded=False):
@@ -839,18 +768,12 @@ with st.expander("⚖️ Log weight metric", expanded=False):
 
         if submit_weight and weight_input > 10.0:
             try:
-                if weight_date_target.strftime("%Y-%m-%d") == now.strftime("%Y-%m-%d"):
-                    current_time = now.strftime("%Y-%m-%d %I:%M %p")
-                else:
-                    current_time = f"{weight_date_target.strftime('%Y-%m-%d')} 10:00 PM"
-                data = {"Timestamp": current_time, "Weight": float(weight_input)}
-                ok, err = airtable_post("Weight", data)
+                current_time = now.strftime("%Y-%m-%d %I:%M %p") if weight_date_target.strftime("%Y-%m-%d") == today_str else f"{weight_date_target.strftime('%Y-%m-%d')} 10:00 PM"
+                ok, err = airtable_post("Weight", {"Timestamp": current_time, "Weight": float(weight_input)})
                 if ok:
                     st.success("Weight recorded!")
-                    st.cache_data.clear()
-                    st.rerun()
-                else:
-                    st.error(f"Couldn't save that to Airtable: {err}")
+                    st.cache_data.clear(); st.rerun()
+                else: st.error(f"Error saving to Airtable: {err}")
             except Exception as e: st.error(f"Error: {e}")
 
 with st.expander("✨ Log a milestone / moment", expanded=False):
@@ -862,50 +785,34 @@ with st.expander("✨ Log a milestone / moment", expanded=False):
         if submit_moment and moment_text:
             try:
                 clean_moment = moment_text.strip().title()
-                data = {
-                    "Date": moment_date.strftime("%Y-%m-%d"), "Moment": clean_moment, "Show On Top": show_on_top_check
-                }
-                ok, err = airtable_post("Moments", data)
+                ok, err = airtable_post("Moments", {"Date": moment_date.strftime("%Y-%m-%d"), "Moment": clean_moment, "Show On Top": show_on_top_check})
                 if ok:
                     st.success("Milestone saved!")
-                    st.cache_data.clear()
-                    st.rerun()
-                else:
-                    st.error(f"Couldn't save that to Airtable: {err}")
+                    st.cache_data.clear(); st.rerun()
+                else: st.error(f"Error saving to Airtable: {err}")
             except Exception as e: st.error(f"Error: {e}")
 
 st.markdown('<div class="bloom-divider"><span>🌼</span></div>', unsafe_allow_html=True)
 
 # ==========================================
-# 7. ANALYTICS VISUALIZATIONS & CALENDAR MARKERS
+# 8. ANALYTICS VISUALIZATIONS & TREND CURVES
 # ==========================================
 st.markdown('<div class="section-eyebrow">📈 Trends & Milestones</div>', unsafe_allow_html=True)
-
 CHART_FONT = "Quicksand"
 
-# Build data dictionary for active calendar visualization cells
-milestone_dates = {}
-for r in moments_records:
-    dt = r.get("fields", {}).get("Date", "")
-    txt = r.get("fields", {}).get("Moment", "")
-    if dt: milestone_dates[dt] = txt
-
-# Create a clean calendar layout mapping milestones to a floral element marker
+# Milestone Mapping Calendar
+milestone_dates = {r.get("fields", {}).get("Date"): r.get("fields", {}).get("Moment") for r in moments_records if r.get("fields", {}).get("Date")}
 if milestone_dates:
     st.caption("🌸 Milestone calendar")
     df_milestones = pd.DataFrame(list(milestone_dates.items()), columns=["Date", "Milestone"])
     df_milestones["Marker"] = "🌸"
 
     cal_dots = alt.Chart(df_milestones).mark_text(size=22, baseline='middle').encode(
-        x=alt.X('Date:T', title=None, axis=alt.Axis(format='%b %d', grid=True)),
-        text='Marker:N',
-        tooltip='Milestone:N'
-    ).properties(height=80).configure_axis(
-        labelFont=CHART_FONT, labelColor="#8a8694", gridColor="#00000010"
-    ).configure_view(strokeOpacity=0)
+        x=alt.X('Date:T', title=None, axis=alt.Axis(format='%b %d', grid=True)), text='Marker:N', tooltip='Milestone:N'
+    ).properties(height=80).configure_axis(labelFont=CHART_FONT, labelColor="#8a8694", gridColor="#00000010").configure_view(strokeOpacity=0)
     st.altair_chart(cal_dots, use_container_width=True)
 
-# Render Calorie Line Area Graph
+# Calorie Intake Curves
 chart_diet_data = {}
 for record in reversed(diet_records):
     fields = record.get("fields", {})
@@ -920,31 +827,16 @@ if chart_diet_data:
     cal_chart = alt.Chart(df_cal).mark_area(
         line={'color': cal_line_color, 'width': 2.5}, interpolate='monotone',
         color=alt.Gradient(gradient='linear', stops=[alt.GradientStop(color=cal_line_color, offset=0), alt.GradientStop(color='rgba(0,0,0,0)', offset=1)], x1=1, y1=1, x2=1, y2=0)
-    ).encode(
-        x=alt.X('Date:T', title=None, axis=alt.Axis(format='%b %d', labelAngle=-45, grid=False)),
-        y=alt.Y('Calories:Q', title=None, scale=alt.Scale(zero=False))
-    ).properties(height=160).configure_axis(
-        labelFont=CHART_FONT, labelColor="#8a8694"
-    ).configure_view(strokeOpacity=0)
+    ).encode(x=alt.X('Date:T', title=None, axis=alt.Axis(format='%b %d', labelAngle=-45, grid=False)), y=alt.Y('Calories:Q', title=None, scale=alt.Scale(zero=False))).properties(height=160).configure_axis(labelFont=CHART_FONT, labelColor="#8a8694").configure_view(strokeOpacity=0)
     st.altair_chart(cal_chart, use_container_width=True)
 
-# Render Weight Line Graph
-chart_weight_data = {}
-for record in reversed(weight_records):
-    fields = record.get("fields", {})
-    ts = fields.get("Timestamp", "")
-    if ts: chart_weight_data[ts.split(" ")[0]] = float(fields.get("Weight", 0))
-
+# Weight Line Curves
+chart_weight_data = {r.get("fields", {}).get("Timestamp", "").split(" ")[0]: float(r.get("fields", {}).get("Weight", 0)) for r in reversed(weight_records) if r.get("fields", {}).get("Timestamp", "")}
 if chart_weight_data:
     st.caption("⚖️ Weight tracking trend (kg)")
     df_weight = pd.DataFrame(list(chart_weight_data.items()), columns=["Date", "Weight"]).sort_values("Date")
     trend_color = "#1fa97a" if len(df_weight) < 2 or df_weight["Weight"].iloc[-1] <= df_weight["Weight"].iloc[-2] else "#ef6f93"
     weight_chart = alt.Chart(df_weight).mark_line(
         color=trend_color, point=alt.OverlayMarkDef(color=trend_color, size=40, filled=True), strokeWidth=3, interpolate='monotone'
-    ).encode(
-        x=alt.X('Date:T', title=None, axis=alt.Axis(format='%b %d', labelAngle=-45, grid=False)),
-        y=alt.Y('Weight:Q', title=None, scale=alt.Scale(zero=False))
-    ).properties(height=160).configure_axis(
-        labelFont=CHART_FONT, labelColor="#8a8694"
-    ).configure_view(strokeOpacity=0)
+    ).encode(x=alt.X('Date:T', title=None, axis=alt.Axis(format='%b %d', labelAngle=-45, grid=False)), y=alt.Y('Weight:Q', title=None, scale=alt.Scale(zero=False))).properties(height=160).configure_axis(labelFont=CHART_FONT, labelColor="#8a8694").configure_view(strokeOpacity=0)
     st.altair_chart(weight_chart, use_container_width=True)
