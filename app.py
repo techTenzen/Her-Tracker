@@ -676,147 +676,133 @@ if cycle_banner:
     if tone == "upcoming": st.markdown(f'<div class="milestone-line">🗓️ {text}</div>', unsafe_allow_html=True)
     else: st.markdown(f'<div class="cycle-outlook outlook-{tone}">{text}</div>', unsafe_allow_html=True)
 
-# Custom global layout overrides for a seamless unified look
+# --- QUERY PARAMETER CLICK HANDLER ---
+# Captures raw HTML button clicks cleanly within Streamlit's execution loop
+if "action" in st.query_params:
+    action_type = st.query_params["action"]
+    if action_type == "start_cycle":
+        ok, err = airtable_post("Cycles", {"Start Date": today_str, "Notes": "Logged via Companion App Dashboard"})
+        if ok: 
+            st.query_params.clear()
+            st.cache_data.clear()
+            st.rerun()
+        else: st.error(f"Error saving cycle start: {err}")
+    elif action_type == "end_cycle":
+        ok, err = airtable_patch("Cycles", active_row_id, {"End Date": today_str})
+        if ok: 
+            st.query_params.clear()
+            st.cache_data.clear()
+            st.rerun()
+        else: st.error(f"Error updating cycle: {err}")
+
+# --- STYLING & PERFECT GRADIENT FLOW ---
 st.markdown("""
     <style>
-    /* Absolute relative layout wrapping the structural container */
-    .companion-wrapper {
-        position: relative;
-        margin-bottom: 16px;
-        height: 84px;
-        width: 100%;
-    }
-
-    /* The master container wrapping everything - Unified Gradient Flow */
-    .unified-cycle-card {
+    /* The core container balancing the 80/20 dynamic row alignment */
+    .split-card-row {
         display: flex;
-        align-items: center;
-        justify-content: space-between;
+        width: 100%;
+        height: 84px;
         border-radius: 20px;
-        border: 1px solid rgba(255,255,255,0.65);
-        box-shadow: 0 8px 22px rgba(0,0,0,0.05);
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.65);
+        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.05);
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
-        overflow: hidden;
-        height: 100%;
-        width: 100%;
-    }
-    
-    /* Idle State: Green gradient flowing to white, fading directly into Pink Button */
-    .unified-cycle-card.cycle-idle {
-        background: linear-gradient(90deg, 
-            rgba(143, 227, 196, 0.4) 0%, 
-            rgba(255, 250, 246, 0.6) 50%, 
-            rgba(239, 111, 147, 0.8) 100%
-        ) !important;
+        margin-bottom: 16px;
     }
 
-    /* Active State: Soft pink/warm gradient flowing all the way into Emerald Button */
-    .unified-cycle-card.cycle-active {
-        background: linear-gradient(90deg, 
-            rgba(255, 182, 200, 0.5) 0%, 
-            rgba(255, 250, 246, 0.6) 50%, 
-            rgba(31, 169, 122, 0.8) 100%
-        ) !important;
-    }
-    
-    /* Left side layout details */
-    .unified-content {
+    /* Left Side: 80% Content Section */
+    .split-left-content {
+        width: 80%;
         display: flex;
         align-items: center;
         gap: 14px;
         padding-left: 18px;
-        flex: 1;
-        background: transparent !important;
     }
 
-    /* Right side simulated visual button */
-    .unified-btn-side {
+    /* Right Side: 20% Interactive Button Section */
+    .split-right-btn {
+        width: 20%;
+        height: 100%;
+        border: none;
+        margin: 0;
+        padding: 0;
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 130px;
-        height: 100%;
+        font-family: 'Quicksand', sans-serif;
         font-weight: 700;
         font-size: 14px;
         color: white;
-        user-select: none;
-        pointer-events: none;
-        background: rgba(0, 0, 0, 0.04); 
+        cursor: pointer;
+        transition: opacity 0.2s ease, filter 0.2s ease;
+        text-decoration: none;
+    }
+    .split-right-btn:hover {
+        filter: brightness(0.95);
     }
 
-    /* Invisible button overlay wrapper - forced inside the absolute wrapper context */
-    .invisible-btn-wrapper {
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 130px;
-        height: 100%;
-        opacity: 0;
-        z-index: 10;
+    /* --- IDLE PALETTE (Continuous Green -> White -> Pink Gradient) --- */
+    .idle-row {
+        background: linear-gradient(90deg, 
+            rgba(143, 227, 196, 0.5) 0%,   /* Soft Green */
+            rgba(255, 250, 246, 0.7) 65%,  /* Blends smoothly out to creamy white */
+            rgba(242, 134, 164, 0.9) 100%  /* Finishes inside the deep pink zone */
+        ) !important;
     }
-    .invisible-btn-wrapper div, .invisible-btn-wrapper button {
-        width: 100% !important;
-        height: 100% !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        border-radius: 0 !important;
-        cursor: pointer !important;
-        border: none !important;
-        background: transparent !important;
+    /* Button steps forward down the color ramp with an increased depth overlay */
+    .idle-btn-color {
+        background: rgba(239, 111, 147, 0.95);
+    }
+
+    /* --- ACTIVE PALETTE (Continuous Pink -> White -> Emerald Gradient) --- */
+    .active-row {
+        background: linear-gradient(90deg, 
+            rgba(255, 182, 200, 0.6) 0%,   /* Soft Pink */
+            rgba(255, 250, 246, 0.7) 65%,  /* Creamy White */
+            rgba(52, 186, 139, 0.9) 100%   /* Emerald finish line */
+        ) !important;
+    }
+    /* Active target column color continuation rules */
+    .active-btn-color {
+        background: rgba(31, 169, 122, 0.95);
     }
     </style>
 """, unsafe_allow_html=True)
 
+# --- CONDITIONAL INTERFACE INJECTION ---
 if is_period_active:
-    # Anchor the markdown structure and interactive layer inside a unified block container
-    with st.container():
-        st.markdown("""
-            <div class="companion-wrapper">
-                <div class="unified-cycle-card cycle-active">
-                    <div class="unified-content">
-                        <div class="cycle-icon">🌷</div>
-                        <div>
-                            <div class="cycle-title">Cycle is active</div>
-                            <div class="cycle-sub">Take it slow today, love — warm tea, rest, zero pressure.</div>
-                        </div>
-                    </div>
-                    <div class="unified-btn-side">🌸 Mark Ended</div>
+    st.markdown(f"""
+        <div class="split-card-row active-row">
+            <div class="split-left-content">
+                <div class="cycle-icon">🌷</div>
+                <div>
+                    <div class="cycle-title">Cycle is active</div>
+                    <div class="cycle-sub">Take it slow today, love — warm tea, rest, zero pressure.</div>
                 </div>
             </div>
-        """, unsafe_allow_html=True)
-        
-        # Pinned right inside the companion-wrapper block context
-        st.markdown('<div class="invisible-btn-wrapper">', unsafe_allow_html=True)
-        if st.button("End", key="end_cycle_btn"):
-            ok, err = airtable_patch("Cycles", active_row_id, {"End Date": today_str})
-            if ok: st.cache_data.clear(); st.rerun()
-            else: st.error(f"Error updating cycle: {err}")
-        st.markdown('</div>', unsafe_allow_html=True)
-
+            <a href="?action=end_cycle" target="_self" class="split-right-btn active-btn-color">
+                🌸 End
+            </a>
+        </div>
+    """, unsafe_allow_html=True)
 else:
-    with st.container():
-        st.markdown("""
-            <div class="companion-wrapper">
-                <div class="unified-cycle-card cycle-idle">
-                    <div class="unified-content">
-                        <div class="cycle-icon">🌿</div>
-                        <div>
-                            <div class="cycle-title">No active cycle</div>
-                            <div class="cycle-sub">Log it here when it starts — I'll take it from there.</div>
-                        </div>
-                    </div>
-                    <div class="unified-btn-side">🩸 Started</div>
+    st.markdown(f"""
+        <div class="split-card-row idle-row">
+            <div class="split-left-content">
+                <div class="cycle-icon">🌿</div>
+                <div>
+                    <div class="cycle-title">No active cycle</div>
+                    <div class="cycle-sub">Log it here when it starts — I'll take it from there.</div>
                 </div>
             </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown('<div class="invisible-btn-wrapper">', unsafe_allow_html=True)
-        if st.button("Start", key="start_cycle_btn"):
-            ok, err = airtable_post("Cycles", {"Start Date": today_str, "Notes": "Logged via Companion App Dashboard"})
-            if ok: st.cache_data.clear(); st.rerun()
-            else: st.error(f"Error saving cycle start: {err}")
-            
+            <a href="?action=start_cycle" target="_self" class="split-right-btn idle-btn-color">
+                🩸 Start
+            </a>
+        </div>
+    """, unsafe_allow_html=True)
+
 st.markdown("<div style='margin-bottom: 4px;'></div>", unsafe_allow_html=True)
 
 # Backdate Cycle Fallback Manual Overrides
