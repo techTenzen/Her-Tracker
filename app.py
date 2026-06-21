@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 from datetime import datetime, timedelta, timezone
+import calendar
 import json
 from collections import Counter
 import altair as alt
@@ -293,6 +294,13 @@ st.markdown("""
         box-shadow: 0 6px 16px rgba(255,183,197,0.32);
         position: relative; overflow: hidden;
     }
+    div[class*="st-key-fast_btn_"] button {
+        background: linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%) !important;
+        color: white !important;
+        padding: 0 24px; height: 2.5em;
+        box-shadow: 0 6px 16px rgba(108, 92, 231, 0.25);
+        position: relative; overflow: hidden;
+    }
 
     div[class*="st-key-cta_"] button {
         width: 100%;
@@ -305,6 +313,7 @@ st.markdown("""
 
     div[class*="st-key-start_cycle_btn"] button::after,
     div[class*="st-key-end_cycle_btn"] button::after,
+    div[class*="st-key-fast_btn_"] button::after,
     div[class*="st-key-cta_"] button::after {
         content: "";
         position: absolute; top: 0; left: -60%;
@@ -315,6 +324,7 @@ st.markdown("""
     }
     div[class*="st-key-start_cycle_btn"] button:hover::after,
     div[class*="st-key-end_cycle_btn"] button:hover::after,
+    div[class*="st-key-fast_btn_"] button:hover::after,
     div[class*="st-key-cta_"] button:hover::after {
         left: 130%;
     }
@@ -339,6 +349,59 @@ st.markdown("""
         overflow: hidden;
     }
     div[data-testid="stExpander"] summary { font-weight: 700 !important; }
+
+    /* Premium Grid Calendar Style Sheet Layout */
+    .grid-calendar-box {
+        background: rgba(255, 255, 255, 0.45);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(255, 255, 255, 0.65);
+        border-radius: 22px;
+        padding: 18px;
+        margin: 10px 0;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.03);
+    }
+    .grid-calendar-header {
+        font-family: 'Fraunces', serif;
+        font-size: 18px;
+        font-weight: 600;
+        text-align: center;
+        color: var(--ink);
+        margin-bottom: 14px;
+    }
+    .grid-calendar-weekdays {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        text-align: center;
+        font-weight: 700;
+        font-size: 11.5px;
+        color: var(--ink-soft);
+        text-transform: uppercase;
+        margin-bottom: 6px;
+    }
+    .grid-calendar-days {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 6px;
+    }
+    .grid-cell {
+        aspect-ratio: 1;
+        background: rgba(255, 255, 255, 0.5);
+        border: 1px solid rgba(0,0,0,0.03);
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: center;
+        padding: 5px 2px;
+        font-size: 12px;
+        font-weight: 600;
+        position: relative;
+    }
+    .grid-cell-empty { background: transparent; border: none; }
+    .grid-cell-today { border: 2px solid var(--rose); background: rgba(255, 243, 246, 0.8); }
+    .grid-cell-num { font-size: 11px; opacity: 0.8; }
+    .grid-cell-markers { font-size: 13px; display: flex; gap: 2px; margin-top: auto; }
 
     hr { border-color: rgba(0,0,0,0.06) !important; }
     </style>
@@ -417,6 +480,8 @@ def fetch_airtable_all(table_name):
             url += "&sort[0][field]=Timestamp&sort[0][direction]=desc"
         elif table_name == "Cycles":
             url += "&sort[0][field]=Start Date&sort[0][direction]=desc"
+        elif table_name == "Fasts":
+            url += "&sort[0][field]=Date&sort[0][direction]=desc"
         res = requests.get(url, headers=headers).json()
         return res.get("records", [])
     except Exception: return []
@@ -426,6 +491,7 @@ weight_records = fetch_airtable_all("Weight")
 moments_records = fetch_airtable_all("Moments")
 cycle_records = fetch_airtable_all("Cycles")
 profile_records = fetch_airtable_all("Profile")
+fasts_records = fetch_airtable_all("Fasts")
 
 # Parse Profile Map
 profile_map = {}
@@ -664,39 +730,48 @@ carb_color = get_status_color(today_carbs, **THRESHOLDS["Carbs"])
 fat_color = get_status_color(today_fats, **THRESHOLDS["Fats"])
 prot_color = get_status_color(today_protein, **THRESHOLDS["Protein"])
 
-cal_target = THRESHOLDS["Calories"]["high"]
 carb_target = THRESHOLDS["Carbs"]["high"]
 fat_target = THRESHOLDS["Fats"]["high"]
 prot_target = THRESHOLDS["Protein"]["low"]
 
-def render_bloom_card(icon, label, value, unit, target, color, delay=0.0):
+max_allowed_calories = float(profile_map.get("Calories", 1400))
+
+def render_bloom_card(icon, label, value, unit, target, color, show_max_format=False, delay=0.0):
     try: pct = max(0, min((value / target) * 100, 100)) if target else 0
     except Exception: pct = 0
+    
+    if show_max_format:
+        value_display = f"{value:.0f} <span style='font-size:13px; opacity:0.65; font-family:sans-serif;'>/ {target:.0f}</span>"
+        target_display = "maximum daily threshold"
+    else:
+        value_display = f"{value:.0f}"
+        target_display = f"of {target:.0f}{unit} goal"
+
     st.markdown(f"""
         <div class="bloom-card" style="animation-delay:{delay}s;">
             <div class="bloom-ring" style="background: conic-gradient({color} {pct:.1f}%, rgba(0,0,0,0.07) 0);">
                 <div class="bloom-inner"><span class="bloom-icon">{icon}</span></div>
             </div>
             <div class="bloom-label">{label}</div>
-            <div class="bloom-value">{value:.0f}<span class="bloom-unit">{unit}</span></div>
-            <div class="bloom-target">of {target:.0f}{unit} goal</div>
+            <div class="bloom-value">{value_display}<span class="bloom-unit">{unit if not show_max_format else 'kcal'}</span></div>
+            <div class="bloom-target">{target_display}</div>
         </div>
     """, unsafe_allow_html=True)
 
 col1, col2 = st.columns(2)
 with col1:
-    render_bloom_card("🔥", "Calories", today_cal, " kcal", cal_target, cal_color, delay=0.00)
-    render_bloom_card("🍞", "Carbs", today_carbs, "g", carb_target, carb_color, delay=0.10)
+    render_bloom_card("🔥", "Calories", today_cal, " kcal", max_allowed_calories, cal_color, show_max_format=True, delay=0.00)
+    render_bloom_card("🍞", "Carbs", today_carbs, "g", carb_target, carb_color, show_max_format=False, delay=0.10)
 with col2:
-    render_bloom_card("💪", "Protein", today_protein, "g", prot_target, prot_color, delay=0.05)
-    render_bloom_card("🥑", "Fats", today_fats, "g", fat_target, fat_color, delay=0.15)
+    render_bloom_card("💪", "Protein", today_protein, "g", prot_target, prot_color, show_max_format=False, delay=0.05)
+    render_bloom_card("🥑", "Fats", today_fats, "g", fat_target, fat_color, show_max_format=False, delay=0.15)
 
 st.markdown('<div class="bloom-divider"><span>🌿</span></div>', unsafe_allow_html=True)
 
 # ==========================================
 # 7. INTERACTIVE STREAMS & HORIZONTAL CONTROLS
 # ==========================================
-st.markdown('<div class="section-eyebrow">🩷 Cycle Companion</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-eyebrow">🩷 Cycle & Fast Companion</div>', unsafe_allow_html=True)
 
 if cycle_banner:
     tone, text = cycle_banner
@@ -728,46 +803,79 @@ if all_starts:
 
 current_date_obj = now.date()
 
-if is_period_active:
-    st.markdown(f"""
-        <div class="cycle-card cycle-active">
-            <div class="cycle-left-layout">
-                <div class="cycle-icon">🌷</div>
-                <div>
-                    <div class="cycle-title">Cycle is active</div>
-                    <div class="cycle-sub">Take it slow today, love — warm tea, rest, zero pressure.</div>
+# Dynamic Check to verify if fasting was logged today
+is_fasting_logged_today = any(r.get("fields", {}).get("Date") == today_str for r in fasts_records)
+
+col_ctrl1, col_ctrl2 = st.columns(2)
+
+with col_ctrl1:
+    if is_period_active:
+        st.markdown(f"""
+            <div class="cycle-card cycle-active">
+                <div class="cycle-left-layout">
+                    <div class="cycle-icon">🌷</div>
+                    <div>
+                        <div class="cycle-title">Active</div>
+                        <div class="cycle-sub">Zero pressure today, love.</div>
+                    </div>
+                </div>
+                {"<div class='cycle-countdown-pill'>" + days_display_text + "</div>" if days_display_text else ""}
+            </div>
+        """, unsafe_allow_html=True)
+        active_btn_label = "🌸 Ended today" if last_start_date == current_date_obj else "🌸 Mark as ended"
+        if st.button(active_btn_label, key="end_cycle_btn"):
+            ok, err = airtable_patch("Cycles", active_row_id, {"End Date": today_str})
+            if ok: st.cache_data.clear(); st.rerun()
+            else: st.error(f"Error: {err}")
+    else:
+        st.markdown(f"""
+            <div class="cycle-card cycle-idle">
+                <div class="cycle-left-layout">
+                    <div class="cycle-icon">🌿</div>
+                    <div>
+                        <div class="cycle-title">Idle</div>
+                        <div class="cycle-sub">Stats are tracking stable.</div>
+                    </div>
+                </div>
+                {"<div class='cycle-countdown-pill'>" + days_display_text + "</div>" if days_display_text else ""}
+            </div>
+        """, unsafe_allow_html=True)
+        idle_btn_label = "🩸 Started today" if last_end_date == current_date_obj else "🩸 Period started today"
+        if st.button(idle_btn_label, key="start_cycle_btn"):
+            ok, err = airtable_post("Cycles", {"Start Date": today_str, "Notes": "Logged via Companion App Dashboard"})
+            if ok: st.cache_data.clear(); st.rerun()
+            else: st.error(f"Error: {err}")
+
+with col_ctrl2:
+    if is_fasting_logged_today:
+        st.markdown("""
+            <div class="cycle-card cycle-active" style="background: linear-gradient(90deg, rgba(162, 155, 254, 0.45) 0%, rgba(255, 250, 246, 0.7) 60%, rgba(255, 209, 222, 0.6) 100%) !important;">
+                <div class="cycle-left-layout">
+                    <div class="cycle-icon">🌙</div>
+                    <div>
+                        <div class="cycle-title">Fasting observed</div>
+                        <div class="cycle-sub">Logged for today. May it accept.</div>
+                    </div>
                 </div>
             </div>
-            {"<div class='cycle-countdown-pill'>" + days_display_text + "</div>" if days_display_text else ""}
-        </div>
-    """, unsafe_allow_html=True)
-    
-    active_btn_label = "🌸 Ended today" if last_start_date == current_date_obj else "🌸 Mark as ended"
-    
-    if st.button(active_btn_label, key="end_cycle_btn"):
-        ok, err = airtable_patch("Cycles", active_row_id, {"End Date": today_str})
-        if ok: st.cache_data.clear(); st.rerun()
-        else: st.error(f"Error updating cycle: {err}")
-else:
-    st.markdown(f"""
-        <div class="cycle-card cycle-idle">
-            <div class="cycle-left-layout">
-                <div class="cycle-icon">🌿</div>
-                <div>
-                    <div class="cycle-title">No active cycle</div>
-                    <div class="cycle-sub">Log it here when it starts — I'll take it from there.</div>
+        """, unsafe_allow_html=True)
+        st.button("✨ Fast Saved", key="fast_btn_disabled", disabled=True)
+    else:
+        st.markdown("""
+            <div class="cycle-card cycle-idle" style="background: linear-gradient(90deg, rgba(255, 250, 246, 0.7) 0%, rgba(162, 155, 254, 0.35) 100%) !important;">
+                <div class="cycle-left-layout">
+                    <div class="cycle-icon">✨</div>
+                    <div>
+                        <div class="cycle-title">Fasting today?</div>
+                        <div class="cycle-sub">Tap below to log her fast.</div>
+                    </div>
                 </div>
             </div>
-            {"<div class='cycle-countdown-pill'>" + days_display_text + "</div>" if days_display_text else ""}
-        </div>
-    """, unsafe_allow_html=True)
-    
-    idle_btn_label = "🩸 Started today" if last_end_date == current_date_obj else "🩸 Period started today"
-    
-    if st.button(idle_btn_label, key="start_cycle_btn"):
-        ok, err = airtable_post("Cycles", {"Start Date": today_str, "Notes": "Logged via Companion App Dashboard"})
-        if ok: st.cache_data.clear(); st.rerun()
-        else: st.error(f"Error saving cycle start: {err}")
+        """, unsafe_allow_html=True)
+        if st.button("🌙 I am fasting today", key="fast_btn_active"):
+            ok, err = airtable_post("Fasts", {"Date": today_str, "Fast Type": "Voluntary"})
+            if ok: st.cache_data.clear(); st.rerun()
+            else: st.error(f"Error logging fast: {err}")
 
 # Backdate Cycle Fallback Manual Overrides
 with st.expander("🗓️ Retroactively log cycle dates"):
@@ -779,21 +887,17 @@ with st.expander("🗓️ Retroactively log cycle dates"):
         if submit_c:
             payload = {"Start Date": c_start.strftime("%Y-%m-%d"), "Notes": c_notes}
             if c_end: payload["End Date"] = c_end.strftime("%Y-%m-%d")
-            
             ok, err = airtable_post("Cycles", payload)
-            if ok:
-                st.success("Cycle history updated!")
-                st.cache_data.clear(); st.rerun()
+            if ok: st.success("Cycle history updated!"); st.cache_data.clear(); st.rerun()
             else: st.error(f"Error saving log: {err}")
 
 st.markdown('<div class="bloom-divider"><span>🌸</span></div>', unsafe_allow_html=True)
 
-# Meals and Weight Logging Accordions
+# Meals, Weight, and Milestone Logging Accordions
 repeated_foods = [food for food, count in Counter(food_history_pool).items() if count >= 3]
 
 with st.expander("📝 Log food entries", expanded=False):
     log_date_target = st.date_input("Logging for which day?", value=now.date(), key="diet_log_date")
-
     if repeated_foods:
         st.caption("⚡ Quick Log Favorites:")
         cols = st.columns(min(len(repeated_foods), 3))
@@ -801,11 +905,9 @@ with st.expander("📝 Log food entries", expanded=False):
             if cols[idx % 3].button(f"➕ {food[:18]}", key=f"btn_{idx}"):
                 st.session_state["her_meal_input"] = food.strip().title()
                 st.rerun()
-
     default_text = st.session_state.get("her_meal_input", "")
     meal_input = st.text_area("What did you eat?", value=default_text, placeholder="e.g., 1 Banana, 2 Roti, 2 Eggs")
     submit_meal = st.button("Log Daily Meal Block", key="cta_meal")
-
     if submit_meal and meal_input:
         with st.spinner("AI calculating customized macros..."):
             try:
@@ -815,7 +917,6 @@ with st.expander("📝 Log food entries", expanded=False):
                     config=types.GenerateContentConfig(response_mime_type="application/json", response_schema=MacroData, temperature=0.1),
                 )
                 macros = json.loads(res.text)
-
                 current_time = now.strftime("%Y-%m-%d %I:%M %p") if log_date_target.strftime("%Y-%m-%d") == today_str else f"{log_date_target.strftime('%Y-%m-%d')} 10:00 PM"
                 data = {
                     "Timestamp": current_time, "Food Items": clean_meal_text,
@@ -833,7 +934,6 @@ with st.expander("⚖️ Log weight metric", expanded=False):
         weight_date_target = st.date_input("Logging for which day?", value=now.date(), key="w_date_track")
         weight_input = st.number_input("Weight (kg)", min_value=10.0, max_value=250.0, step=0.05, format="%.2f")
         submit_weight = st.form_submit_button("Log Weight", key="cta_weight")
-
         if submit_weight and weight_input > 10.0:
             try:
                 current_time = now.strftime("%Y-%m-%d %I:%M %p") if weight_date_target.strftime("%Y-%m-%d") == today_str else f"{weight_date_target.strftime('%Y-%m-%d')} 10:00 PM"
@@ -858,18 +958,58 @@ with st.expander("✨ Log a milestone / moment", expanded=False):
 st.markdown('<div class="bloom-divider"><span>🌼</span></div>', unsafe_allow_html=True)
 
 # ==========================================
-# 8. ANALYTICS VISUALIZATIONS & TREND CURVES
+# 8. ANALYTICS VISUALIZATIONS & VISUAL MONTH GRID CALENDAR
 # ==========================================
 st.markdown('<div class="section-eyebrow">📈 Trends & Milestones</div>', unsafe_allow_html=True)
 CHART_FONT = "Quicksand"
 
-# Milestone Mapping Calendar
+# Map out dataset values chronologically for calendar processing
+fasting_days_set = {r.get("fields", {}).get("Date") for r in fasts_records if r.get("fields", {}).get("Date")}
 milestone_dates = {r.get("fields", {}).get("Date"): r.get("fields", {}).get("Moment") for r in moments_records if r.get("fields", {}).get("Date")}
+
+# ---- NEW REAL MONTH MATRIX GRID CALENDAR ----
+st.markdown('<div class="grid-calendar-box">', unsafe_allow_html=True)
+st.markdown(f'<div class="grid-calendar-header">🌷 {now.strftime("%B %Y")} Matrix Map View</div>', unsafe_allow_html=True)
+st.markdown("""
+    <div class="grid-calendar-weekdays">
+        <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+    </div>
+""", unsafe_allow_html=True)
+
+cal_obj = calendar.Calendar(firstweekday=0)
+month_days = cal_obj.monthdayscalendar(now.year, now.month)
+
+grid_html = '<div class="grid-calendar-days">'
+for week in month_days:
+    for day in week:
+        if day == 0:
+            grid_html += '<div class="grid-cell grid-cell-empty"></div>'
+        else:
+            current_loop_date_str = f"{now.year}-{now.month:02d}-{day:02d}"
+            is_cell_today = (day == now.day)
+            
+            cell_class = "grid-cell grid-cell-today" if is_cell_today else "grid-cell"
+            
+            markers_inner = ""
+            if current_loop_date_str in milestone_dates:
+                markers_inner += "🌻"
+            if current_loop_date_str in fasting_days_set:
+                markers_inner += "🌙"
+                
+            grid_html += f"""
+                <div class="{cell_class}">
+                    <div class="grid-cell-num">{day}</div>
+                    <div class="grid-cell-markers">{markers_inner}</div>
+                </div>
+            """
+grid_html += "</div></div>"
+st.markdown(grid_html, unsafe_allow_html=True)
+
+# Milestone Mapping Calendar (Original format remains un-compromised)
 if milestone_dates:
-    st.caption("🌻 Milestone calendar")
+    st.caption("🌻 Milestone timeline view")
     df_milestones = pd.DataFrame(list(milestone_dates.items()), columns=["Date", "Milestone"])
     df_milestones["Marker"] = "🌻"
-
     cal_dots = alt.Chart(df_milestones).mark_text(size=22, baseline='middle').encode(
         x=alt.X('Date:T', title=None, axis=alt.Axis(format='%b %d', grid=True)), text='Marker:N', tooltip='Milestone:N'
     ).properties(height=80).configure_axis(labelFont=CHART_FONT, labelColor="#8a8694", gridColor="#00000010").configure_view(strokeOpacity=0, fill='rgba(143, 227, 196, 0.25)')
@@ -886,7 +1026,6 @@ if chart_diet_data:
     st.caption("🔥 Calorie consumption curve")
     df_cal = pd.DataFrame(list(chart_diet_data.items()), columns=["Date", "Calories"]).sort_values("Date")
     cal_line_color = "#ef6f93" if today_cal > THRESHOLDS["Calories"]["high"] else "#1fa97a"
-
     cal_chart = alt.Chart(df_cal).mark_area(
         line={'color': cal_line_color, 'width': 2.5}, interpolate='monotone',
         color=alt.Gradient(gradient='linear', stops=[alt.GradientStop(color=cal_line_color, offset=0), alt.GradientStop(color='rgba(0,0,0,0)', offset=1)], x1=1, y1=1, x2=1, y2=0)
