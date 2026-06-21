@@ -677,9 +677,10 @@ if cycle_banner:
     else: st.markdown(f'<div class="cycle-outlook outlook-{tone}">{text}</div>', unsafe_allow_html=True)
 
 # Custom global layout overrides for a seamless unified look
+# Custom global layout overrides for a seamless unified look
 st.markdown("""
     <style>
-    /* The master container wrapping everything */
+    /* The master container wrapping everything - Unified Gradient Flow */
     .unified-cycle-card {
         display: flex;
         align-items: center;
@@ -695,6 +696,24 @@ st.markdown("""
         height: 84px;
     }
     
+    /* Idle State: Green gradient flowing to white, fading directly into Pink Button */
+    .unified-cycle-card.cycle-idle {
+        background: linear-gradient(90deg, 
+            rgba(143, 227, 196, 0.4) 0%, 
+            rgba(255, 250, 246, 0.6) 50%, 
+            rgba(239, 111, 147, 0.8) 100%
+        ) !important;
+    }
+
+    /* Active State: Soft pink/warm gradient flowing all the way into Emerald Button */
+    .unified-cycle-card.cycle-active {
+        background: linear-gradient(90deg, 
+            rgba(255, 182, 200, 0.5) 0%, 
+            rgba(255, 250, 246, 0.6) 50%, 
+            rgba(31, 169, 122, 0.8) 100%
+        ) !important;
+    }
+    
     /* Left side layout details */
     .unified-content {
         display: flex;
@@ -702,9 +721,10 @@ st.markdown("""
         gap: 14px;
         padding-left: 18px;
         flex: 1;
+        background: transparent !important;
     }
 
-    /* Right side simulated visual button */
+    /* Right side simulated visual button - blended smoothly over the background end-stop */
     .unified-btn-side {
         display: flex;
         align-items: center;
@@ -715,13 +735,9 @@ st.markdown("""
         font-size: 14px;
         color: white;
         user-select: none;
-        pointer-events: none; /* Let clicks pass through to the invisible button below */
-    }
-    .btn-side-active {
-        background: linear-gradient(135deg, var(--emerald) 0%, var(--emerald-deep) 100%);
-    }
-    .btn-side-idle {
-        background: linear-gradient(135deg, var(--rose) 0%, var(--rose-deep) 100%);
+        pointer-events: none;
+        /* Subtle overlay to give the text crisp separation over the gradient tail */
+        background: rgba(0, 0, 0, 0.04); 
     }
 
     /* Invisible button overlay wrapper */
@@ -731,7 +747,7 @@ st.markdown("""
         right: 0;
         width: 130px;
         height: 100%;
-        opacity: 0; /* Keeps it active but completely hidden */
+        opacity: 0;
         z-index: 10;
     }
     .invisible-btn-wrapper div, .invisible-btn-wrapper button {
