@@ -333,10 +333,12 @@ headers = {"Authorization": f"Bearer {AIRTABLE_TOKEN}", "Content-Type": "applica
 
 client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
 
+# TIME SYNCHRONIZATION SYSTEM VARIABLES
 IST = timezone(timedelta(hours=5, minutes=30))
 now = datetime.now(IST)
 today_str = now.strftime("%Y-%m-%d")
-current_hour = now.hour  # <-- ADD THIS LINE HERE
+current_hour = now.hour
+day_of_year = now.timetuple().tm_yday
 
 # ==========================================
 # AIRTABLE WRITE HELPERS
@@ -377,7 +379,6 @@ def fetch_airtable_all(table_name):
         if table_name in ["Diet", "Weight"]:
             url += "&sort[0][field]=Timestamp&sort[0][direction]=desc"
         elif table_name == "Cycles":
-            # Sort by Start Date horizontally so that the latest row is always indexed at 0
             url += "&sort[0][field]=Start Date&sort[0][direction]=desc"
         res = requests.get(url, headers=headers).json()
         return res.get("records", [])
@@ -407,7 +408,6 @@ last_start_date = None
 last_end_date = None
 active_row_id = None
 
-# Extracting start date, end date, and row metadata chronologically
 if cycle_records:
     latest_row = cycle_records[0]
     active_row_id = latest_row.get("id")
@@ -423,7 +423,6 @@ if cycle_records:
         try: last_end_date = datetime.strptime(e_str, "%Y-%m-%d").date()
         except Exception: pass
         
-    # If a Start Date exists but the End Date column remains blank, the cycle is active
     if s_str and not e_str:
         is_period_active = True
 
@@ -433,7 +432,7 @@ if cycle_records:
 is_onboarded = bool(profile_map.get("Calories"))
 
 if not is_onboarded:
-    st.markdown('<div class="note-card"><p class="note-text">🌸 Welcome to your pocket companion 🧸<br>Let\'s set up her custom health parameters baseline right now.</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="note-card"><p class="note-text">🌸 Welcome to your pocket companion 🧸<br>Let\'s set up your custom health parameters baseline right now.</p></div>', unsafe_allow_html=True)
     with st.form("onboarding_form"):
         h_in = st.number_input("Height (cm)", min_value=100, max_value=250, value=160)
         w_in = st.number_input("Weight (kg)", min_value=30.0, max_value=200.0, value=55.0, step=0.1)
@@ -507,7 +506,7 @@ while check_date.strftime("%Y-%m-%d") in logged_dates:
     streak += 1
     check_date -= timedelta(days=1)
 
-# Pick slot compliments
+# Phrase matrices mapping
 phrases_morning = [
     "Good morning, beautiful! 🧸 Wish you have a great day ahead...",
     "Morning sunshine! You look absolutely radiant today, time to conquer the day!",
@@ -623,6 +622,16 @@ for record in moments_records:
                 st.markdown(f'<div class="milestone-line">✨ <b>{m_text}:</b> {days_since} days running! Phenomenal work.</div>', unsafe_allow_html=True)
             except Exception: continue
 
+def get_status_color(val, low, high, reverse=False):
+    if reverse:
+        if val < low: return "#ef6f93"
+        if val <= high: return "#f4b942"
+        return "#1fa97a"
+    else:
+        if val < low: return "#1fa97a"
+        if val <= high: return "#f4b942"
+        return "#ef6f93"
+
 cal_color = get_status_color(today_cal, **THRESHOLDS["Calories"])
 carb_color = get_status_color(today_carbs, **THRESHOLDS["Carbs"])
 fat_color = get_status_color(today_fats, **THRESHOLDS["Fats"])
@@ -677,11 +686,9 @@ if is_period_active:
             </div>
         </div>
     """, unsafe_allow_html=True)
-    # PATCH execution to add End Date horizontally to the open row ID
     if st.button("🌸 Mark as ended", key="end_cycle_btn"):
         ok, err = airtable_patch("Cycles", active_row_id, {"End Date": today_str})
-        if ok:
-            st.cache_data.clear(); st.rerun()
+        if ok: st.cache_data.clear(); st.rerun()
         else: st.error(f"Error updating cycle: {err}")
 else:
     st.markdown("""
@@ -693,11 +700,9 @@ else:
             </div>
         </div>
     """, unsafe_allow_html=True)
-    # POST execution to open a brand-new row horizontally with a Start Date
     if st.button("🩸 Period started today", key="start_cycle_btn"):
         ok, err = airtable_post("Cycles", {"Start Date": today_str, "Notes": "Logged via Companion App Dashboard"})
-        if ok:
-            st.cache_data.clear(); st.rerun()
+        if ok: st.cache_data.clear(); st.rerun()
         else: st.error(f"Error saving cycle start: {err}")
 
 # Backdate Cycle Fallback Manual Overrides
@@ -755,9 +760,7 @@ with st.expander("📝 Log food entries", expanded=False):
                 }
                 ok, err = airtable_post("Diet", data)
                 if "her_meal_input" in st.session_state: del st.session_state["her_meal_input"]
-                if ok:
-                    st.success("Macros tracked successfully!")
-                    st.cache_data.clear(); st.rerun()
+                if ok: st.success("Macros tracked successfully!"); st.cache_data.clear(); st.rerun()
                 else: st.error(f"Error saving to Airtable: {err}")
             except Exception as e: st.error(f"Error: {e}")
 
@@ -771,9 +774,7 @@ with st.expander("⚖️ Log weight metric", expanded=False):
             try:
                 current_time = now.strftime("%Y-%m-%d %I:%M %p") if weight_date_target.strftime("%Y-%m-%d") == today_str else f"{weight_date_target.strftime('%Y-%m-%d')} 10:00 PM"
                 ok, err = airtable_post("Weight", {"Timestamp": current_time, "Weight": float(weight_input)})
-                if ok:
-                    st.success("Weight recorded!")
-                    st.cache_data.clear(); st.rerun()
+                if ok: st.success("Weight recorded!"); st.cache_data.clear(); st.rerun()
                 else: st.error(f"Error saving to Airtable: {err}")
             except Exception as e: st.error(f"Error: {e}")
 
@@ -787,9 +788,7 @@ with st.expander("✨ Log a milestone / moment", expanded=False):
             try:
                 clean_moment = moment_text.strip().title()
                 ok, err = airtable_post("Moments", {"Date": moment_date.strftime("%Y-%m-%d"), "Moment": clean_moment, "Show On Top": show_on_top_check})
-                if ok:
-                    st.success("Milestone saved!")
-                    st.cache_data.clear(); st.rerun()
+                if ok: st.success("Milestone saved!"); st.cache_data.clear(); st.rerun()
                 else: st.error(f"Error saving to Airtable: {err}")
             except Exception as e: st.error(f"Error: {e}")
 
