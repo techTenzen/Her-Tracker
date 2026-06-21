@@ -677,23 +677,29 @@ if cycle_banner:
     else: st.markdown(f'<div class="cycle-outlook outlook-{tone}">{text}</div>', unsafe_allow_html=True)
 
 # Custom global layout overrides for a seamless unified look
-# Custom global layout overrides for a seamless unified look
 st.markdown("""
     <style>
+    /* Absolute relative layout wrapping the structural container */
+    .companion-wrapper {
+        position: relative;
+        margin-bottom: 16px;
+        height: 84px;
+        width: 100%;
+    }
+
     /* The master container wrapping everything - Unified Gradient Flow */
     .unified-cycle-card {
         display: flex;
         align-items: center;
         justify-content: space-between;
         border-radius: 20px;
-        margin-bottom: 16px;
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
         border: 1px solid rgba(255,255,255,0.65);
         box-shadow: 0 8px 22px rgba(0,0,0,0.05);
-        position: relative;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
         overflow: hidden;
-        height: 84px;
+        height: 100%;
+        width: 100%;
     }
     
     /* Idle State: Green gradient flowing to white, fading directly into Pink Button */
@@ -724,7 +730,7 @@ st.markdown("""
         background: transparent !important;
     }
 
-    /* Right side simulated visual button - blended smoothly over the background end-stop */
+    /* Right side simulated visual button */
     .unified-btn-side {
         display: flex;
         align-items: center;
@@ -736,11 +742,10 @@ st.markdown("""
         color: white;
         user-select: none;
         pointer-events: none;
-        /* Subtle overlay to give the text crisp separation over the gradient tail */
         background: rgba(0, 0, 0, 0.04); 
     }
 
-    /* Invisible button overlay wrapper */
+    /* Invisible button overlay wrapper - forced inside the absolute wrapper context */
     .invisible-btn-wrapper {
         position: absolute;
         top: 0;
@@ -757,56 +762,62 @@ st.markdown("""
         padding: 0 !important;
         border-radius: 0 !important;
         cursor: pointer !important;
+        border: none !important;
+        background: transparent !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
 if is_period_active:
-    # 1. Render the entire outer box seamlessly
-    st.markdown("""
-        <div class="unified-cycle-card cycle-active">
-            <div class="unified-content">
-                <div class="cycle-icon">🌷</div>
-                <div>
-                    <div class="cycle-title">Cycle is active</div>
-                    <div class="cycle-sub">Take it slow today, love — warm tea, rest, zero pressure.</div>
+    # Anchor the markdown structure and interactive layer inside a unified block container
+    with st.container():
+        st.markdown("""
+            <div class="companion-wrapper">
+                <div class="unified-cycle-card cycle-active">
+                    <div class="unified-content">
+                        <div class="cycle-icon">🌷</div>
+                        <div>
+                            <div class="cycle-title">Cycle is active</div>
+                            <div class="cycle-sub">Take it slow today, love — warm tea, rest, zero pressure.</div>
+                        </div>
+                    </div>
+                    <div class="unified-btn-side">🌸 Mark Ended</div>
                 </div>
             </div>
-            <div class="unified-btn-side btn-side-active">🌸 Mark Ended</div>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    # 2. Inject an invisible functional button perfectly overlayed on the right side
-    st.markdown('<div class="invisible-btn-wrapper">', unsafe_allow_html=True)
-    if st.button("End", key="end_cycle_btn"):
-        ok, err = airtable_patch("Cycles", active_row_id, {"End Date": today_str})
-        if ok: st.cache_data.clear(); st.rerun()
-        else: st.error(f"Error updating cycle: {err}")
-    st.markdown('</div>', unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+        
+        # Pinned right inside the companion-wrapper block context
+        st.markdown('<div class="invisible-btn-wrapper">', unsafe_allow_html=True)
+        if st.button("End", key="end_cycle_btn"):
+            ok, err = airtable_patch("Cycles", active_row_id, {"End Date": today_str})
+            if ok: st.cache_data.clear(); st.rerun()
+            else: st.error(f"Error updating cycle: {err}")
+        st.markdown('</div>', unsafe_allow_html=True)
 
 else:
-    # 1. Render the idle state outer box seamlessly
-    st.markdown("""
-        <div class="unified-cycle-card cycle-idle">
-            <div class="unified-content">
-                <div class="cycle-icon">🌿</div>
-                <div>
-                    <div class="cycle-title">No active cycle</div>
-                    <div class="cycle-sub">Log it here when it starts — I'll take it from there.</div>
+    with st.container():
+        st.markdown("""
+            <div class="companion-wrapper">
+                <div class="unified-cycle-card cycle-idle">
+                    <div class="unified-content">
+                        <div class="cycle-icon">🌿</div>
+                        <div>
+                            <div class="cycle-title">No active cycle</div>
+                            <div class="cycle-sub">Log it here when it starts — I'll take it from there.</div>
+                        </div>
+                    </div>
+                    <div class="unified-btn-side">🩸 Started</div>
                 </div>
             </div>
-            <div class="unified-btn-side btn-side-idle">🩸 Started</div>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    # 2. Inject an invisible functional button perfectly overlayed on the right side
-    st.markdown('<div class="invisible-btn-wrapper">', unsafe_allow_html=True)
-    if st.button("Start", key="start_cycle_btn"):
-        ok, err = airtable_post("Cycles", {"Start Date": today_str, "Notes": "Logged via Companion App Dashboard"})
-        if ok: st.cache_data.clear(); st.rerun()
-        else: st.error(f"Error saving cycle start: {err}")
-    st.markdown('</div>', unsafe_allow_html=True)
-
+        """, unsafe_allow_html=True)
+        
+        st.markdown('<div class="invisible-btn-wrapper">', unsafe_allow_html=True)
+        if st.button("Start", key="start_cycle_btn"):
+            ok, err = airtable_post("Cycles", {"Start Date": today_str, "Notes": "Logged via Companion App Dashboard"})
+            if ok: st.cache_data.clear(); st.rerun()
+            else: st.error(f"Error saving cycle start: {err}")
+            
+st.markdown("<div style='margin-bottom: 4px;'></div>", unsafe_allow_html=True)
 
 # Backdate Cycle Fallback Manual Overrides
 with st.expander("🗓️ Retroactively log cycle dates"):
