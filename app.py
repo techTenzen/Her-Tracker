@@ -350,31 +350,38 @@ st.markdown("""
     }
     div[data-testid="stExpander"] summary { font-weight: 700 !important; }
 
-    /* Premium Grid Calendar Style Sheet Layout */
+    /* ---- STRICTLY OPTIMIZED 7x4 COMPACT GRID CALENDAR STYLING ---- */
+    .grid-calendar-outer {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        margin: 10px 0;
+    }
     .grid-calendar-box {
         background: rgba(255, 255, 255, 0.45);
         backdrop-filter: blur(14px);
         -webkit-backdrop-filter: blur(14px);
         border: 1px solid rgba(255, 255, 255, 0.65);
-        border-radius: 22px;
-        padding: 18px;
-        margin: 10px 0;
+        border-radius: 20px;
+        padding: 14px;
+        width: 100%;
+        max-width: 350px; /* Constrains the width from blowing out on desktops */
         box-shadow: 0 8px 24px rgba(0,0,0,0.03);
     }
     .grid-calendar-header {
         font-family: 'Fraunces', serif;
-        font-size: 18px;
+        font-size: 16px;
         font-weight: 600;
         text-align: center;
         color: var(--ink);
-        margin-bottom: 14px;
+        margin-bottom: 12px;
     }
     .grid-calendar-weekdays {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
         text-align: center;
         font-weight: 700;
-        font-size: 11.5px;
+        font-size: 10.5px;
         color: var(--ink-soft);
         text-transform: uppercase;
         margin-bottom: 6px;
@@ -382,26 +389,24 @@ st.markdown("""
     .grid-calendar-days {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 6px;
+        gap: 4px;
     }
     .grid-cell {
         aspect-ratio: 1;
         background: rgba(255, 255, 255, 0.5);
-        border: 1px solid rgba(0,0,0,0.03);
-        border-radius: 12px;
+        border: 1px solid rgba(0, 0, 0, 0.04);
+        border-radius: 8px;
         display: flex;
         flex-direction: column;
-        justify-content: space-between;
+        justify-content: center;
         align-items: center;
-        padding: 5px 2px;
-        font-size: 12px;
-        font-weight: 600;
+        padding: 2px;
         position: relative;
     }
     .grid-cell-empty { background: transparent; border: none; }
-    .grid-cell-today { border: 2px solid var(--rose); background: rgba(255, 243, 246, 0.8); }
-    .grid-cell-num { font-size: 11px; opacity: 0.8; }
-    .grid-cell-markers { font-size: 13px; display: flex; gap: 2px; margin-top: auto; }
+    .grid-cell-today { border: 1.5px solid var(--rose); background: rgba(255, 243, 246, 0.8); }
+    .grid-cell-num { font-size: 11px; font-weight: 700; opacity: 0.85; }
+    .grid-cell-markers { font-size: 11px; margin-top: 1px; display: flex; gap: 1px; }
 
     hr { border-color: rgba(0,0,0,0.06) !important; }
     </style>
@@ -803,7 +808,6 @@ if all_starts:
 
 current_date_obj = now.date()
 
-# Dynamic Check to verify if fasting was logged today
 is_fasting_logged_today = any(r.get("fields", {}).get("Date") == today_str for r in fasts_records)
 
 col_ctrl1, col_ctrl2 = st.columns(2)
@@ -963,16 +967,16 @@ st.markdown('<div class="bloom-divider"><span>🌼</span></div>', unsafe_allow_h
 st.markdown('<div class="section-eyebrow">📈 Trends & Milestones</div>', unsafe_allow_html=True)
 CHART_FONT = "Quicksand"
 
-# Map out dataset values chronologically for calendar processing
 fasting_days_set = {r.get("fields", {}).get("Date") for r in fasts_records if r.get("fields", {}).get("Date")}
 milestone_dates = {r.get("fields", {}).get("Date"): r.get("fields", {}).get("Moment") for r in moments_records if r.get("fields", {}).get("Date")}
 
-# ---- NEW REAL MONTH MATRIX GRID CALENDAR ----
+# ---- COMPACT 7x4 CENTERED MATRIX GRID CALENDAR ----
+st.markdown('<div class="grid-calendar-outer">', unsafe_allow_html=True)
 st.markdown('<div class="grid-calendar-box">', unsafe_allow_html=True)
-st.markdown(f'<div class="grid-calendar-header">🌷 {now.strftime("%B %Y")} Matrix Map View</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="grid-calendar-header">🌷 {now.strftime("%B %Y")} Map View</div>', unsafe_allow_html=True)
 st.markdown("""
     <div class="grid-calendar-weekdays">
-        <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+        <div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div><div>S</div>
     </div>
 """, unsafe_allow_html=True)
 
@@ -1002,10 +1006,10 @@ for week in month_days:
                     <div class="grid-cell-markers">{markers_inner}</div>
                 </div>
             """
-grid_html += "</div></div>"
+grid_html += "</div></div></div></div>"
 st.markdown(grid_html, unsafe_allow_html=True)
 
-# Milestone Mapping Calendar (Original format remains un-compromised)
+# Milestone Mapping Calendar (Timeline alternative)
 if milestone_dates:
     st.caption("🌻 Milestone timeline view")
     df_milestones = pd.DataFrame(list(milestone_dates.items()), columns=["Date", "Milestone"])
