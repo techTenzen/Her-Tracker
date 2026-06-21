@@ -676,89 +676,121 @@ if cycle_banner:
     if tone == "upcoming": st.markdown(f'<div class="milestone-line">🗓️ {text}</div>', unsafe_allow_html=True)
     else: st.markdown(f'<div class="cycle-outlook outlook-{tone}">{text}</div>', unsafe_allow_html=True)
 
-# Custom injection to handle structural merging of buttons into containers
+# Custom global layout overrides for a seamless unified look
 st.markdown("""
     <style>
-    .merged-container {
+    /* The master container wrapping everything */
+    .unified-cycle-card {
         display: flex;
-        align-items: stretch;
+        align-items: center;
         justify-content: space-between;
         border-radius: 20px;
-        margin-bottom: 10px;
+        margin-bottom: 16px;
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
-        overflow: hidden;
         border: 1px solid rgba(255,255,255,0.65);
         box-shadow: 0 8px 22px rgba(0,0,0,0.05);
+        position: relative;
+        overflow: hidden;
+        height: 84px;
     }
-    .merged-text-side {
-        flex: 1;
+    
+    /* Left side layout details */
+    .unified-content {
         display: flex;
         align-items: center;
         gap: 14px;
-        padding: 16px 18px;
+        padding-left: 18px;
+        flex: 1;
     }
-    /* Button column override to remove default padding gaps */
-    div[data-testid="column"] {
-        padding: 0 !important;
+
+    /* Right side simulated visual button */
+    .unified-btn-side {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 130px;
+        height: 100%;
+        font-weight: 700;
+        font-size: 14px;
+        color: white;
+        user-select: none;
+        pointer-events: none; /* Let clicks pass through to the invisible button below */
     }
-    /* Force the button container to match card height exactly */
-    div.stButton button[id^="bxt_"], div.stButton button {
-        border-radius: 0px !important;
-        margin: 0 !important;
+    .btn-side-active {
+        background: linear-gradient(135deg, var(--emerald) 0%, var(--emerald-deep) 100%);
+    }
+    .btn-side-idle {
+        background: linear-gradient(135deg, var(--rose) 0%, var(--rose-deep) 100%);
+    }
+
+    /* Invisible button overlay wrapper */
+    .invisible-btn-wrapper {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 130px;
+        height: 100%;
+        opacity: 0; /* Keeps it active but completely hidden */
+        z-index: 10;
+    }
+    .invisible-btn-wrapper div, .invisible-btn-wrapper button {
         width: 100% !important;
         height: 100% !important;
-        min-height: 80px !important;
-        border: none !important;
-        box-shadow: none !important;
-        transition: background 0.2s ease;
+        margin: 0 !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+        cursor: pointer !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
 if is_period_active:
-    # Outer block styling applied via a side-by-side layout with 0 gap config
-    c_left, c_right = st.columns([3.5, 1], gap="small")
-    with c_left:
-        st.markdown("""
-            <div class="merged-container cycle-active" style="border-radius: 20px 0 0 20px; border-right: none; margin-bottom: 0;">
-                <div class="merged-text-side">
-                    <div class="cycle-icon">🌷</div>
-                    <div>
-                        <div class="cycle-title">Cycle is active</div>
-                        <div class="cycle-sub">Take it slow today, love — warm tea, rest, zero pressure.</div>
-                    </div>
+    # 1. Render the entire outer box seamlessly
+    st.markdown("""
+        <div class="unified-cycle-card cycle-active">
+            <div class="unified-content">
+                <div class="cycle-icon">🌷</div>
+                <div>
+                    <div class="cycle-title">Cycle is active</div>
+                    <div class="cycle-sub">Take it slow today, love — warm tea, rest, zero pressure.</div>
                 </div>
             </div>
-        """, unsafe_allow_html=True)
-    with c_right:
-        # Custom styles injected via custom key rules
-        if st.button("🌸 Mark Ended", key="end_cycle_btn", use_container_width=True):
-            ok, err = airtable_patch("Cycles", active_row_id, {"End Date": today_str})
-            if ok: st.cache_data.clear(); st.rerun()
-            else: st.error(f"Error updating cycle: {err}")
-else:
-    c_left, c_right = st.columns([3.5, 1], gap="small")
-    with c_left:
-        st.markdown("""
-            <div class="merged-container cycle-idle" style="border-radius: 20px 0 0 20px; border-right: none; margin-bottom: 0;">
-                <div class="merged-text-side">
-                    <div class="cycle-icon">🌿</div>
-                    <div>
-                        <div class="cycle-title">No active cycle</div>
-                        <div class="cycle-sub">Log it here when it starts — I'll take it from there.</div>
-                    </div>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-    with c_right:
-        if st.button("🩸 Started", key="start_cycle_btn", use_container_width=True):
-            ok, err = airtable_post("Cycles", {"Start Date": today_str, "Notes": "Logged via Companion App Dashboard"})
-            if ok: st.cache_data.clear(); st.rerun()
-            else: st.error(f"Error saving cycle start: {err}")
+            <div class="unified-btn-side btn-side-active">🌸 Mark Ended</div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # 2. Inject an invisible functional button perfectly overlayed on the right side
+    st.markdown('<div class="invisible-btn-wrapper">', unsafe_allow_html=True)
+    if st.button("End", key="end_cycle_btn"):
+        ok, err = airtable_patch("Cycles", active_row_id, {"End Date": today_str})
+        if ok: st.cache_data.clear(); st.rerun()
+        else: st.error(f"Error updating cycle: {err}")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# Space recovery layout correction
-st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
+else:
+    # 1. Render the idle state outer box seamlessly
+    st.markdown("""
+        <div class="unified-cycle-card cycle-idle">
+            <div class="unified-content">
+                <div class="cycle-icon">🌿</div>
+                <div>
+                    <div class="cycle-title">No active cycle</div>
+                    <div class="cycle-sub">Log it here when it starts — I'll take it from there.</div>
+                </div>
+            </div>
+            <div class="unified-btn-side btn-side-idle">🩸 Started</div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # 2. Inject an invisible functional button perfectly overlayed on the right side
+    st.markdown('<div class="invisible-btn-wrapper">', unsafe_allow_html=True)
+    if st.button("Start", key="start_cycle_btn"):
+        ok, err = airtable_post("Cycles", {"Start Date": today_str, "Notes": "Logged via Companion App Dashboard"})
+        if ok: st.cache_data.clear(); st.rerun()
+        else: st.error(f"Error saving cycle start: {err}")
+    st.markdown('</div>', unsafe_allow_html=True)
+
 
 # Backdate Cycle Fallback Manual Overrides
 with st.expander("🗓️ Retroactively log cycle dates"):
