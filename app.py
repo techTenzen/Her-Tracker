@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 # ==========================================
 # 1. PAGE SETUP & "POCKET GARDEN" GLASSMORPHISM STYLING
 # ==========================================
-st.set_page_config(page_title="Pocket Health Tracker", page_icon="🌷", layout="centered")
+st.set_page_config(page_title="Addu's Garden", page_icon="🌷", layout="centered")
 
 st.markdown("""
     <style>
@@ -432,7 +432,7 @@ if cycle_records:
 is_onboarded = bool(profile_map.get("Calories"))
 
 if not is_onboarded:
-    st.markdown('<div class="note-card"><p class="note-text">🌸 Welcome to your pocket companion 🧸<br>Let\'s set up your custom health parameters baseline right now.</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="note-card"><p class="note-text">🌸 Welcome to Addu\'s Garden 🧸<br>Let\'s set up your custom health parameters baseline right now.</p></div>', unsafe_allow_html=True)
     with st.form("onboarding_form"):
         h_in = st.number_input("Height (cm)", min_value=100, max_value=250, value=160)
         w_in = st.number_input("Weight (kg)", min_value=30.0, max_value=200.0, value=55.0, step=0.1)
@@ -488,7 +488,7 @@ THRESHOLDS = {
 # ==========================================
 # 5. HIGH-END ROTATING PHRASE COMPLIMENTS ENGINE
 # ==========================================
-st.markdown('<div class="app-title">🌷 Aduu\'s Garden 🧸</div>', unsafe_allow_html=True)
+st.markdown('<div class="app-title">🌷 Addu\'s Garden 🧸</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="app-subtitle">{now.strftime("%A · %B %d")}</div>', unsafe_allow_html=True)
 
 # Calculate Streak
@@ -783,8 +783,7 @@ with st.expander("✨ Log a milestone / moment", expanded=False):
         moment_date = st.date_input("When did this happen?", value=now.date())
         moment_text = st.text_input("What did you achieve?", placeholder="e.g., Left Sugar, Finished Exam Block")
         show_on_top_check = st.checkbox("Pin to top highlight banner?", value=True)
-        submit_moment = st.form_submit_button("Save Moment", key="cta_moment")
-        if submit_moment and moment_text:
+        if st.form_submit_button("Save Moment", key="cta_moment"):
             try:
                 clean_moment = moment_text.strip().title()
                 ok, err = airtable_post("Moments", {"Date": moment_date.strftime("%Y-%m-%d"), "Moment": clean_moment, "Show On Top": show_on_top_check})
