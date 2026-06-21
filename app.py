@@ -365,7 +365,7 @@ st.markdown("""
         border-radius: 20px;
         padding: 14px 16px;
         width: 100%;
-        max-width: 310px; /* Locked standard width context */
+        max-width: 320px;
         box-shadow: 0 10px 25px rgba(0,0,0,0.03);
     }
     .grid-calendar-header {
@@ -396,23 +396,34 @@ st.markdown("""
         border: 1px solid rgba(0, 0, 0, 0.02);
         border-radius: 8px;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        font-size: 11px;
-        font-weight: 600;
-        color: var(--ink);
         position: relative;
         transition: transform 0.2s;
     }
     .grid-cell-empty { background: transparent; border: none; }
     
-    /* Day States */
-    .grid-cell-today { border: 1.5px solid var(--rose); font-weight: 700; color: var(--rose-deep); }
-    .grid-cell-fast { background: #eef2ff !important; border: 1px solid #cadcff !important; color: #4338ca !important; }
-    .grid-cell-milestone { background: #fefce8 !important; border: 1px solid #fef08a !important; color: #a16207 !important; }
-    .grid-cell-both { background: linear-gradient(135deg, #eef2ff 50%, #fefce8 50%) !important; border: 1px solid #cbd5e1 !important; font-weight: 700; }
+    /* Day States & Cell Highlight Fills */
+    .grid-cell-num {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--ink);
+        z-index: 2;
+    }
+    .grid-cell-icon {
+        font-size: 12px;
+        margin-top: -1px;
+        z-index: 2;
+        line-height: 1;
+    }
+    .grid-cell-today { border: 1.5px solid var(--rose); }
+    .grid-cell-today .grid-cell-num { font-weight: 700; color: var(--rose-deep); }
     
-    /* Small dot highlights at the bottom */
+    .grid-cell-fast { background: #eef2ff !important; border: 1px solid #cadcff !important; }
+    .grid-cell-milestone { background: #fefce8 !important; border: 1px solid #fef08a !important; }
+    .grid-cell-both { background: linear-gradient(135deg, #eef2ff 50%, #fefce8 50%) !important; border: 1px solid #cbd5e1 !important; }
+    
     .cell-dot {
         position: absolute;
         bottom: 3px;
@@ -749,41 +760,32 @@ carb_color = get_status_color(today_carbs, **THRESHOLDS["Carbs"])
 fat_color = get_status_color(today_fats, **THRESHOLDS["Fats"])
 prot_color = get_status_color(today_protein, **THRESHOLDS["Protein"])
 
+cal_target = THRESHOLDS["Calories"]["high"]
 carb_target = THRESHOLDS["Carbs"]["high"]
 fat_target = THRESHOLDS["Fats"]["high"]
 prot_target = THRESHOLDS["Protein"]["low"]
 
-max_allowed_calories = float(profile_map.get("Calories", 1400))
-
-def render_bloom_card(icon, label, value, unit, target, color, show_max_format=False, delay=0.0):
+def render_bloom_card(icon, label, value, unit, target, color, delay=0.0):
     try: pct = max(0, min((value / target) * 100, 100)) if target else 0
     except Exception: pct = 0
-    
-    if show_max_format:
-        value_display = f"{value:.0f} <span style='font-size:13px; opacity:0.65; font-family:sans-serif;'>/ {target:.0f}</span>"
-        target_display = "maximum daily threshold"
-    else:
-        value_display = f"{value:.0f}"
-        target_display = f"of {target:.0f}{unit} goal"
-
     st.markdown(f"""
         <div class="bloom-card" style="animation-delay:{delay}s;">
             <div class="bloom-ring" style="background: conic-gradient({color} {pct:.1f}%, rgba(0,0,0,0.07) 0);">
                 <div class="bloom-inner"><span class="bloom-icon">{icon}</span></div>
             </div>
             <div class="bloom-label">{label}</div>
-            <div class="bloom-value">{value_display}<span class="bloom-unit">{unit if not show_max_format else 'kcal'}</span></div>
-            <div class="bloom-target">{target_display}</div>
+            <div class="bloom-value">{value:.0f}<span class="bloom-unit">{unit}</span></div>
+            <div class="bloom-target">of {target:.0f}{unit} goal</div>
         </div>
     """, unsafe_allow_html=True)
 
 col1, col2 = st.columns(2)
 with col1:
-    render_bloom_card("🔥", "Calories", today_cal, " kcal", max_allowed_calories, cal_color, show_max_format=True, delay=0.00)
-    render_bloom_card("🍞", "Carbs", today_carbs, "g", carb_target, carb_color, show_max_format=False, delay=0.10)
+    render_bloom_card("🔥", "Calories", today_cal, " kcal", cal_target, cal_color, delay=0.00)
+    render_bloom_card("🍞", "Carbs", today_carbs, "g", carb_target, carb_color, delay=0.10)
 with col2:
-    render_bloom_card("💪", "Protein", today_protein, "g", prot_target, prot_color, show_max_format=False, delay=0.05)
-    render_bloom_card("🥑", "Fats", today_fats, "g", fat_target, fat_color, show_max_format=False, delay=0.15)
+    render_bloom_card("💪", "Protein", today_protein, "g", prot_target, prot_color, delay=0.05)
+    render_bloom_card("🥑", "Fats", today_fats, "g", fat_target, fat_color, delay=0.15)
 
 st.markdown('<div class="bloom-divider"><span>🌿</span></div>', unsafe_allow_html=True)
 
@@ -982,9 +984,9 @@ st.markdown('<div class="section-eyebrow">📈 Trends & Milestones</div>', unsaf
 CHART_FONT = "Quicksand"
 
 fasting_days_set = {r.get("fields", {}).get("Date") for r in fasts_records if r.get("fields", {}).get("Date")}
-milestone_dates = {r.get("fields", {}).get("Date"): r.get("fields", {}).get("Moment") for r in moments_records if r.get("fields", {}).get("Date")}
+milestone_dates = {r.get("fields", {}).get("Date"): r.get("fields", {}).get("Moment", "") for r in moments_records if r.get("fields", {}).get("Date")}
 
-# ---- NATIVE COMPACT CELL-COLOR MATRIX CALENDAR ----
+# ---- NATIVE COMPACT CELL-COLOR MATRIX CALENDAR WITH SOFT TOY / FLOWER CONTEXT INDICATORS ----
 st.markdown('<div class="grid-calendar-container">', unsafe_allow_html=True)
 st.markdown('<div class="grid-calendar-box">', unsafe_allow_html=True)
 st.markdown(f'<div class="grid-calendar-header">🌷 {now.strftime("%B %Y")} Map</div>', unsafe_allow_html=True)
@@ -997,6 +999,9 @@ st.markdown("""
 cal_obj = calendar.Calendar(firstweekday=0)
 month_days = cal_obj.monthdayscalendar(now.year, now.month)
 
+# Rotating garden array checklist for aesthetic variety
+soft_toys_flowers = ["🧸", "🦁", "🌷", "🌹", "🌻", "🌸"]
+
 grid_html = '<div class="grid-calendar-days">'
 for week in month_days:
     for day in week:
@@ -1006,7 +1011,6 @@ for week in month_days:
             current_loop_date_str = f"{now.year}-{now.month:02d}-{day:02d}"
             is_cell_today = (day == now.day)
             
-            # Determine intersection conditions
             has_fast = current_loop_date_str in fasting_days_set
             has_milestone = current_loop_date_str in milestone_dates
             
@@ -1021,9 +1025,22 @@ for week in month_days:
             if is_cell_today:
                 state_class += " grid-cell-today"
                 
-            grid_html += f'<div class="grid-cell{state_class}">{day}'
+            grid_html += f'<div class="grid-cell{state_class}">'
+            grid_html += f'<div class="grid-cell-num">{day}</div>'
+            
+            # Contextual Icon Selection logic
+            if has_milestone and has_fast:
+                grid_html += '<div class="grid-cell-icon">🌙</div>'
+            elif has_fast:
+                grid_html += '<div class="grid-cell-icon">🌙</div>'
+            elif has_milestone:
+                # Select index cleanly from the day count to loop icons
+                selected_icon = soft_toys_flowers[day % len(soft_toys_flowers)]
+                grid_html += f'<div class="grid-cell-icon">{selected_icon}</div>'
+            
             if is_cell_today and not (has_fast or has_milestone):
                 grid_html += '<div class="cell-dot dot-today"></div>'
+                
             grid_html += '</div>'
             
 grid_html += "</div></div></div></div>"
