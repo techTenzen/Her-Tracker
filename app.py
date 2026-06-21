@@ -17,7 +17,7 @@ st.set_page_config(page_title="Addu's Garden", page_icon="🌷", layout="centere
 
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Quicksand:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght=0,9..144,500;0,9..144,600;1,9..144,500&family=Quicksand:wght@400;500;600;700&display=swap');
 
     :root {
         --emerald: #1fa97a;
@@ -350,63 +350,77 @@ st.markdown("""
     }
     div[data-testid="stExpander"] summary { font-weight: 700 !important; }
 
-    /* ---- STRICTLY OPTIMIZED 7x4 COMPACT GRID CALENDAR STYLING ---- */
-    .grid-calendar-outer {
+    /* ---- NATIVE COMPACT 7x4 SYSTEM CALENDAR DESIGN ---- */
+    .grid-calendar-container {
         display: flex;
         justify-content: center;
         width: 100%;
-        margin: 10px 0;
+        margin: 15px 0;
     }
     .grid-calendar-box {
-        background: rgba(255, 255, 255, 0.45);
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-        border: 1px solid rgba(255, 255, 255, 0.65);
+        background: rgba(255, 255, 255, 0.65);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.8);
         border-radius: 20px;
-        padding: 14px;
+        padding: 14px 16px;
         width: 100%;
-        max-width: 350px; /* Constrains the width from blowing out on desktops */
-        box-shadow: 0 8px 24px rgba(0,0,0,0.03);
+        max-width: 310px; /* Locked standard width context */
+        box-shadow: 0 10px 25px rgba(0,0,0,0.03);
     }
     .grid-calendar-header {
         font-family: 'Fraunces', serif;
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 600;
         text-align: center;
         color: var(--ink);
-        margin-bottom: 12px;
+        margin-bottom: 10px;
     }
     .grid-calendar-weekdays {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
         text-align: center;
         font-weight: 700;
-        font-size: 10.5px;
+        font-size: 11px;
         color: var(--ink-soft);
-        text-transform: uppercase;
-        margin-bottom: 6px;
+        margin-bottom: 8px;
     }
     .grid-calendar-days {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 4px;
+        gap: 6px;
     }
     .grid-cell {
         aspect-ratio: 1;
-        background: rgba(255, 255, 255, 0.5);
-        border: 1px solid rgba(0, 0, 0, 0.04);
+        background: rgba(255, 255, 255, 0.4);
+        border: 1px solid rgba(0, 0, 0, 0.02);
         border-radius: 8px;
         display: flex;
-        flex-direction: column;
-        justify-content: center;
         align-items: center;
-        padding: 2px;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--ink);
         position: relative;
+        transition: transform 0.2s;
     }
     .grid-cell-empty { background: transparent; border: none; }
-    .grid-cell-today { border: 1.5px solid var(--rose); background: rgba(255, 243, 246, 0.8); }
-    .grid-cell-num { font-size: 11px; font-weight: 700; opacity: 0.85; }
-    .grid-cell-markers { font-size: 11px; margin-top: 1px; display: flex; gap: 1px; }
+    
+    /* Day States */
+    .grid-cell-today { border: 1.5px solid var(--rose); font-weight: 700; color: var(--rose-deep); }
+    .grid-cell-fast { background: #eef2ff !important; border: 1px solid #cadcff !important; color: #4338ca !important; }
+    .grid-cell-milestone { background: #fefce8 !important; border: 1px solid #fef08a !important; color: #a16207 !important; }
+    .grid-cell-both { background: linear-gradient(135deg, #eef2ff 50%, #fefce8 50%) !important; border: 1px solid #cbd5e1 !important; font-weight: 700; }
+    
+    /* Small dot highlights at the bottom */
+    .cell-dot {
+        position: absolute;
+        bottom: 3px;
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+    }
+    .dot-today { background: var(--rose); }
 
     hr { border-color: rgba(0,0,0,0.06) !important; }
     </style>
@@ -970,10 +984,10 @@ CHART_FONT = "Quicksand"
 fasting_days_set = {r.get("fields", {}).get("Date") for r in fasts_records if r.get("fields", {}).get("Date")}
 milestone_dates = {r.get("fields", {}).get("Date"): r.get("fields", {}).get("Moment") for r in moments_records if r.get("fields", {}).get("Date")}
 
-# ---- COMPACT 7x4 CENTERED MATRIX GRID CALENDAR ----
-st.markdown('<div class="grid-calendar-outer">', unsafe_allow_html=True)
+# ---- NATIVE COMPACT CELL-COLOR MATRIX CALENDAR ----
+st.markdown('<div class="grid-calendar-container">', unsafe_allow_html=True)
 st.markdown('<div class="grid-calendar-box">', unsafe_allow_html=True)
-st.markdown(f'<div class="grid-calendar-header">🌷 {now.strftime("%B %Y")} Map View</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="grid-calendar-header">🌷 {now.strftime("%B %Y")} Map</div>', unsafe_allow_html=True)
 st.markdown("""
     <div class="grid-calendar-weekdays">
         <div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div><div>S</div>
@@ -992,20 +1006,26 @@ for week in month_days:
             current_loop_date_str = f"{now.year}-{now.month:02d}-{day:02d}"
             is_cell_today = (day == now.day)
             
-            cell_class = "grid-cell grid-cell-today" if is_cell_today else "grid-cell"
+            # Determine intersection conditions
+            has_fast = current_loop_date_str in fasting_days_set
+            has_milestone = current_loop_date_str in milestone_dates
             
-            markers_inner = ""
-            if current_loop_date_str in milestone_dates:
-                markers_inner += "🌻"
-            if current_loop_date_str in fasting_days_set:
-                markers_inner += "🌙"
+            state_class = ""
+            if has_fast and has_milestone:
+                state_class = " grid-cell-both"
+            elif has_fast:
+                state_class = " grid-cell-fast"
+            elif has_milestone:
+                state_class = " grid-cell-milestone"
                 
-            grid_html += f"""
-                <div class="{cell_class}">
-                    <div class="grid-cell-num">{day}</div>
-                    <div class="grid-cell-markers">{markers_inner}</div>
-                </div>
-            """
+            if is_cell_today:
+                state_class += " grid-cell-today"
+                
+            grid_html += f'<div class="grid-cell{state_class}">{day}'
+            if is_cell_today and not (has_fast or has_milestone):
+                grid_html += '<div class="cell-dot dot-today"></div>'
+            grid_html += '</div>'
+            
 grid_html += "</div></div></div></div>"
 st.markdown(grid_html, unsafe_allow_html=True)
 
