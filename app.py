@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import textwrap
 from datetime import datetime, timedelta, timezone
 import json
 from collections import Counter
@@ -14,311 +15,311 @@ from pydantic import BaseModel, Field
 # ==========================================
 st.set_page_config(page_title="Addu's Garden", page_icon="🌷", layout="centered")
 
-st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Quicksand:wght@400;500;600;700&display=swap');
+st.markdown(textwrap.dedent("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Quicksand:wght@400;500;600;700&display=swap');
 
-    :root {
-        --emerald: #1fa97a;
-        --emerald-deep: #168a63;
-        --emerald-soft: #8fe3c4;
-        --rose: #ef6f93;
-        --rose-deep: #e0527b;
-        --rose-soft: #ffd1de;
-        --gold: #f4b942;
-        --cream: #fffaf6;
-        --ink: #34313c;
-        --ink-soft: #8a8694;
-    }
+:root {
+    --emerald: #1fa97a;
+    --emerald-deep: #168a63;
+    --emerald-soft: #8fe3c4;
+    --rose: #ef6f93;
+    --rose-deep: #e0527b;
+    --rose-soft: #ffd1de;
+    --gold: #f4b942;
+    --cream: #fffaf6;
+    --ink: #34313c;
+    --ink-soft: #8a8694;
+}
 
-    html, body, [class*="css"], .stMarkdown {
-        font-family: 'Quicksand', -apple-system, BlinkMacSystemFont, sans-serif;
-        color: var(--ink);
-    }
+html, body, [class*="css"], .stMarkdown {
+    font-family: 'Quicksand', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--ink);
+}
 
-    .stApp {
-        background: linear-gradient(160deg, #e1f8ee 0%, #fdeef4 42%, #fff3e6 75%, #ffe7ef 100%);
-        background-attachment: fixed;
-    }
-    .stApp::before, .stApp::after {
-        content: "";
-        position: fixed;
-        border-radius: 50%;
-        filter: blur(85px);
-        opacity: 0.45;
-        z-index: 0;
-        pointer-events: none;
-    }
-    .stApp::before { width: 400px; height: 400px; background: radial-gradient(circle, var(--emerald-soft), transparent 70%); top: -130px; left: -110px; animation: drift 15s ease-in-out infinite; }
-    .stApp::after { width: 460px; height: 460px; background: radial-gradient(circle, var(--rose-soft), transparent 70%); bottom: -150px; right: -130px; animation: drift 18s ease-in-out infinite reverse; }
+.stApp {
+    background: linear-gradient(160deg, #e1f8ee 0%, #fdeef4 42%, #fff3e6 75%, #ffe7ef 100%);
+    background-attachment: fixed;
+}
+.stApp::before, .stApp::after {
+    content: "";
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(85px);
+    opacity: 0.45;
+    z-index: 0;
+    pointer-events: none;
+}
+.stApp::before { width: 400px; height: 400px; background: radial-gradient(circle, var(--emerald-soft), transparent 70%); top: -130px; left: -110px; animation: drift 15s ease-in-out infinite; }
+.stApp::after { width: 460px; height: 460px; background: radial-gradient(circle, var(--rose-soft), transparent 70%); bottom: -150px; right: -130px; animation: drift 18s ease-in-out infinite reverse; }
 
-    @keyframes drift {
-        0%, 100% { transform: translate(0,0) scale(1); }
-        50% { transform: translate(25px, -20px) scale(1.06); }
-    }
+@keyframes drift {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    50% { transform: translate(25px, -20px) scale(1.06); }
+}
 
-    @keyframes floatIn {
-        from { opacity: 0; transform: translateY(14px); }
-        to   { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes blossom {
-        from { opacity: 0; transform: scale(0.86); }
-        to   { opacity: 1; transform: scale(1); }
-    }
-    @keyframes flicker {
-        0%, 100% { transform: scale(1) rotate(0deg); }
-        50% { transform: scale(1.15) rotate(-4deg); }
-    }
+@keyframes floatIn {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes blossom {
+    from { opacity: 0; transform: scale(0.86); }
+    to   { opacity: 1; transform: scale(1); }
+}
+@keyframes flicker {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    50% { transform: scale(1.15) rotate(-4deg); }
+}
 
-    /* ---- Title ---- */
-    .app-title {
-        font-family: 'Fraunces', serif;
-        font-weight: 600;
-        font-size: 30px;
-        text-align: center;
-        margin: 4px 0 0 0;
-        background: linear-gradient(100deg, var(--emerald-deep) 0%, var(--rose-deep) 35%, var(--gold) 50%, var(--rose-deep) 65%, var(--emerald-deep) 100%);
-        background-size: 250% auto;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        animation: floatIn 0.6s ease both, shimmerText 7s linear infinite 0.6s;
-    }
-    @keyframes shimmerText {
-        0% { background-position: 0% 50%; }
-        100% { background-position: 250% 50%; }
-    }
-    .app-subtitle {
-        text-align: center;
-        font-size: 12px;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        color: var(--ink-soft);
-        margin-bottom: 18px;
-        animation: floatIn 0.6s ease both;
-    }
+/* ---- Title ---- */
+.app-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 30px;
+    text-align: center;
+    margin: 4px 0 0 0;
+    background: linear-gradient(100deg, var(--emerald-deep) 0%, var(--rose-deep) 35%, var(--gold) 50%, var(--rose-deep) 65%, var(--emerald-deep) 100%);
+    background-size: 250% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: floatIn 0.6s ease both, shimmerText 7s linear infinite 0.6s;
+}
+@keyframes shimmerText {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 250% 50%; }
+}
+.app-subtitle {
+    text-align: center;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 18px;
+    animation: floatIn 0.6s ease both;
+}
 
-    /* ---- Greeting "note" card ---- */
-    .note-card {
-        background: rgba(255,255,255,0.55);
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-        border: 1px solid rgba(255,255,255,0.7);
-        border-radius: 22px;
-        padding: 24px 26px 20px 26px;
-        margin-bottom: 16px;
-        position: relative;
-        animation: floatIn 0.7s ease both, breathe 5s ease-in-out infinite 0.7s;
-    }
-    @keyframes breathe {
-        0%, 100% { box-shadow: 0 10px 30px rgba(239,111,147,0.14); }
-        50% { box-shadow: 0 16px 40px rgba(239,111,147,0.24); }
-    }
-    .note-card::before {
-        content: "🌿";
-        position: absolute;
-        top: -15px; left: 22px;
-        font-size: 18px;
-        background: var(--cream);
-        border-radius: 50%;
-        width: 32px; height: 32px;
-        display: flex; align-items: center; justify-content: center;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-    }
-    .note-text {
-        font-family: 'Fraunces', serif;
-        font-style: italic;
-        font-weight: 500;
-        font-size: 17px;
-        line-height: 1.65;
-        color: #4a4654;
-        text-align: center;
-        margin: 0;
-    }
+/* ---- Greeting "note" card ---- */
+.note-card {
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255,255,255,0.7);
+    border-radius: 22px;
+    padding: 24px 26px 20px 26px;
+    margin-bottom: 16px;
+    position: relative;
+    animation: floatIn 0.7s ease both, breathe 5s ease-in-out infinite 0.7s;
+}
+@keyframes breathe {
+    0%, 100% { box-shadow: 0 10px 30px rgba(239,111,147,0.14); }
+    50% { box-shadow: 0 16px 40px rgba(239,111,147,0.24); }
+}
+.note-card::before {
+    content: "🌿";
+    position: absolute;
+    top: -15px; left: 22px;
+    font-size: 18px;
+    background: var(--cream);
+    border-radius: 50%;
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+.note-text {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 500;
+    font-size: 17px;
+    line-height: 1.65;
+    color: #4a4654;
+    text-align: center;
+    margin: 0;
+}
 
-    /* ---- Streak pill ---- */
-    .streak-pill {
-        display: inline-flex; align-items: center; gap: 7px;
-        background: linear-gradient(135deg, #fff3e0, #ffe3ec);
-        border-radius: 999px;
-        padding: 7px 18px;
-        font-weight: 700;
-        font-size: 13.5px;
-        box-shadow: 0 4px 14px rgba(244,185,66,0.22);
-        margin-bottom: 8px;
-        animation: floatIn 0.7s ease both;
-    }
-    .streak-pill .flame { display: inline-block; animation: flicker 1.8s ease-in-out infinite; }
+/* ---- Streak pill ---- */
+.streak-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: linear-gradient(135deg, #fff3e0, #ffe3ec);
+    border-radius: 999px;
+    padding: 7px 18px;
+    font-weight: 700;
+    font-size: 13.5px;
+    box-shadow: 0 4px 14px rgba(244,185,66,0.22);
+    margin-bottom: 8px;
+    animation: floatIn 0.7s ease both;
+}
+.streak-pill .flame { display: inline-block; animation: flicker 1.8s ease-in-out infinite; }
 
-    .milestone-line {
-        font-size: 13.5px;
-        color: var(--ink-soft);
-        margin: 3px 2px;
-        animation: floatIn 0.6s ease both;
-    }
+.milestone-line {
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    margin: 3px 2px;
+    animation: floatIn 0.6s ease both;
+}
 
-    /* ---- Section labels ---- */
-    .section-eyebrow {
-        font-weight: 700;
-        font-size: 12.5px;
-        letter-spacing: 0.10em;
-        text-transform: uppercase;
-        color: var(--ink-soft);
-        margin: 26px 2px 12px 2px;
-    }
+/* ---- Section labels ---- */
+.section-eyebrow {
+    font-weight: 700;
+    font-size: 12.5px;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 26px 2px 12px 2px;
+}
 
-    /* ---- Bloom macro cards ---- */
-    .bloom-card {
-        background: rgba(255,255,255,0.55);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255,255,255,0.65);
-        border-radius: 20px;
-        padding: 18px 8px 14px 8px;
-        text-align: center;
-        margin: 6px 0 10px 0;
-        box-shadow: 0 8px 22px rgba(0,0,0,0.05);
-        animation: blossom 0.5s ease both;
-        transition: transform 0.25s ease, box-shadow 0.25s ease;
-    }
-    .bloom-card:hover { transform: translateY(-3px); box-shadow: 0 14px 28px rgba(0,0,0,0.08); }
-    .bloom-ring {
-        width: 72px; height: 72px;
-        border-radius: 50%;
-        margin: 0 auto 10px auto;
-        display: flex; align-items: center; justify-content: center;
-        box-shadow: 0 0 0 5px rgba(255,255,255,0.55);
-    }
-    .bloom-inner {
-        width: 54px; height: 54px;
-        border-radius: 50%;
-        background: var(--cream);
-        display: flex; align-items: center; justify-content: center;
-        box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
-    }
-    .bloom-icon { font-size: 21px; }
-    .bloom-label { font-weight: 700; font-size: 13px; color: var(--ink); margin-top: 1px; letter-spacing: 0.01em; }
-    .bloom-value { font-family: 'Fraunces', serif; font-weight: 600; font-size: 19px; color: var(--ink); margin-top: 1px; }
-    .bloom-unit { font-size: 11.5px; font-weight: 500; color: var(--ink-soft); margin-left: 2px; }
-    .bloom-target { font-size: 11px; color: var(--ink-soft); margin-top: 1px; }
+/* ---- Bloom macro cards ---- */
+.bloom-card {
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.65);
+    border-radius: 20px;
+    padding: 18px 8px 14px 8px;
+    text-align: center;
+    margin: 6px 0 10px 0;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.05);
+    animation: blossom 0.5s ease both;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.bloom-card:hover { transform: translateY(-3px); box-shadow: 0 14px 28px rgba(0,0,0,0.08); }
+.bloom-ring {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    margin: 0 auto 10px auto;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 0 5px rgba(255,255,255,0.55);
+}
+.bloom-inner {
+    width: 54px; height: 54px;
+    border-radius: 50%;
+    background: var(--cream);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
+}
+.bloom-icon { font-size: 21px; }
+.bloom-label { font-weight: 700; font-size: 13px; color: var(--ink); margin-top: 1px; letter-spacing: 0.01em; }
+.bloom-value { font-family: 'Fraunces', serif; font-weight: 600; font-size: 19px; color: var(--ink); margin-top: 1px; }
+.bloom-unit { font-size: 11.5px; font-weight: 500; color: var(--ink-soft); margin-left: 2px; }
+.bloom-target { font-size: 11px; color: var(--ink-soft); margin-top: 1px; }
 
-    /* ---- Flourish divider ---- */
-    .bloom-divider {
-        display: flex; align-items: center; justify-content: center;
-        margin: 8px 0 6px 0;
-        color: var(--ink-soft);
-    }
-    .bloom-divider::before, .bloom-divider::after {
-        content: ""; flex: 1; height: 1px;
-        background: linear-gradient(to right, transparent, rgba(0,0,0,0.12), transparent);
-    }
-    .bloom-divider span { padding: 0 12px; font-size: 14px; }
+/* ---- Flourish divider ---- */
+.bloom-divider {
+    display: flex; align-items: center; justify-content: center;
+    margin: 8px 0 6px 0;
+    color: var(--ink-soft);
+}
+.bloom-divider::before, .bloom-divider::after {
+    content: ""; flex: 1; height: 1px;
+    background: linear-gradient(to right, transparent, rgba(0,0,0,0.12), transparent);
+}
+.bloom-divider span { padding: 0 12px; font-size: 14px; }
 
-    /* ---- Cycle companion card ---- */
-    .cycle-card {
-        display: flex; align-items: center; gap: 14px;
-        border-radius: 20px;
-        padding: 16px 18px;
-        margin-bottom: 10px;
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        animation: floatIn 0.6s ease both;
-    }
-    .cycle-active { background: linear-gradient(135deg, rgba(255,182,200,0.5), rgba(255,255,255,0.5)); box-shadow: 0 8px 20px rgba(239,111,147,0.16); }
-    .cycle-idle { background: linear-gradient(135deg, rgba(143,227,196,0.4), rgba(255,255,255,0.5)); box-shadow: 0 8px 20px rgba(31,169,122,0.11); }
-    .cycle-icon { font-size: 27px; }
-    .cycle-title { font-weight: 700; font-size: 14.5px; color: var(--ink); }
-    .cycle-sub { font-size: 12.5px; color: var(--ink-soft); margin-top: 1px; }
+/* ---- Cycle companion card ---- */
+.cycle-card {
+    display: flex; align-items: center; gap: 14px;
+    border-radius: 20px;
+    padding: 16px 18px;
+    margin-bottom: 10px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    animation: floatIn 0.6s ease both;
+}
+.cycle-active { background: linear-gradient(135deg, rgba(255,182,200,0.5), rgba(255,255,255,0.5)); box-shadow: 0 8px 20px rgba(239,111,147,0.16); }
+.cycle-idle { background: linear-gradient(135deg, rgba(143,227,196,0.4), rgba(255,255,255,0.5)); box-shadow: 0 8px 20px rgba(31,169,122,0.11); }
+.cycle-icon { font-size: 27px; }
+.cycle-title { font-weight: 700; font-size: 14.5px; color: var(--ink); }
+.cycle-sub { font-size: 12.5px; color: var(--ink-soft); margin-top: 1px; }
 
-    /* Cycle outlook banner */
-    .cycle-outlook {
-        border-radius: 14px;
-        padding: 10px 16px;
-        margin-bottom: 10px;
-        font-weight: 600;
-        font-size: 13px;
-        animation: floatIn 0.5s ease both;
-    }
-    .outlook-late { background: linear-gradient(135deg, rgba(239,111,147,0.20), rgba(239,111,147,0.08)); color: var(--rose-deep); border: 1px solid rgba(239,111,147,0.25); }
-    .outlook-due  { background: linear-gradient(135deg, rgba(244,185,66,0.22), rgba(244,185,66,0.08)); color: #8a6512; border: 1px solid rgba(244,185,66,0.3); }
-    .outlook-warn { background: linear-gradient(135deg, rgba(239,111,147,0.16), rgba(255,255,255,0.3)); color: var(--rose-deep); border: 1px solid rgba(239,111,147,0.2); }
-    .outlook-good { background: linear-gradient(135deg, rgba(31,169,122,0.18), rgba(31,169,122,0.06)); color: var(--emerald-deep); border: 1px solid rgba(31,169,122,0.25); }
+/* Cycle outlook banner */
+.cycle-outlook {
+    border-radius: 14px;
+    padding: 10px 16px;
+    margin-bottom: 10px;
+    font-weight: 600;
+    font-size: 13px;
+    animation: floatIn 0.5s ease both;
+}
+.outlook-late { background: linear-gradient(135deg, rgba(239,111,147,0.20), rgba(239,111,147,0.08)); color: var(--rose-deep); border: 1px solid rgba(239,111,147,0.25); }
+.outlook-due  { background: linear-gradient(135deg, rgba(244,185,66,0.22), rgba(244,185,66,0.08)); color: #8a6512; border: 1px solid rgba(244,185,66,0.3); }
+.outlook-warn { background: linear-gradient(135deg, rgba(239,111,147,0.16), rgba(255,255,255,0.3)); color: var(--rose-deep); border: 1px solid rgba(239,111,147,0.2); }
+.outlook-good { background: linear-gradient(135deg, rgba(31,169,122,0.18), rgba(31,169,122,0.06)); color: var(--emerald-deep); border: 1px solid rgba(31,169,122,0.25); }
 
-    /* ---- Buttons ---- */
-    .stButton>button, .stFormSubmitButton>button {
-        border-radius: 999px;
-        font-weight: 700;
-        font-family: 'Quicksand', sans-serif;
-        border: none;
-        transition: transform 0.18s ease, box-shadow 0.18s ease;
-    }
-    .stButton>button:hover, .stFormSubmitButton>button:hover { transform: translateY(-1px); }
-    .stButton>button:active, .stFormSubmitButton>button:active { transform: translateY(0px); }
+/* ---- Buttons ---- */
+.stButton>button, .stFormSubmitButton>button {
+    border-radius: 999px;
+    font-weight: 700;
+    font-family: 'Quicksand', sans-serif;
+    border: none;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.stButton>button:hover, .stFormSubmitButton>button:hover { transform: translateY(-1px); }
+.stButton>button:active, .stFormSubmitButton>button:active { transform: translateY(0px); }
 
-    div[class*="st-key-start_cycle_btn"] button {
-        background: linear-gradient(135deg, var(--rose) 0%, var(--rose-deep) 100%) !important;
-        color: white !important;
-        padding: 0 24px; height: 2.5em;
-        box-shadow: 0 6px 16px rgba(239,111,147,0.32);
-        position: relative; overflow: hidden;
-    }
-    div[class*="st-key-end_cycle_btn"] button {
-        background: linear-gradient(135deg, var(--emerald) 0%, var(--emerald-deep) 100%) !important;
-        color: white !important;
-        padding: 0 24px; height: 2.5em;
-        box-shadow: 0 6px 16px rgba(31,169,122,0.28);
-        position: relative; overflow: hidden;
-    }
+div[class*="st-key-start_cycle_btn"] button {
+    background: linear-gradient(135deg, var(--rose) 0%, var(--rose-deep) 100%) !important;
+    color: white !important;
+    padding: 0 24px; height: 2.5em;
+    box-shadow: 0 6px 16px rgba(239,111,147,0.32);
+    position: relative; overflow: hidden;
+}
+div[class*="st-key-end_cycle_btn"] button {
+    background: linear-gradient(135deg, var(--emerald) 0%, var(--emerald-deep) 100%) !important;
+    color: white !important;
+    padding: 0 24px; height: 2.5em;
+    box-shadow: 0 6px 16px rgba(31,169,122,0.28);
+    position: relative; overflow: hidden;
+}
 
-    div[class*="st-key-cta_"] button {
-        width: 100%;
-        height: 2.9em;
-        background: linear-gradient(135deg, var(--emerald) 0%, var(--rose) 100%) !important;
-        color: white !important;
-        box-shadow: 0 8px 18px rgba(239,111,147,0.24);
-        position: relative; overflow: hidden;
-    }
+div[class*="st-key-cta_"] button {
+    width: 100%;
+    height: 2.9em;
+    background: linear-gradient(135deg, var(--emerald) 0%, var(--rose) 100%) !important;
+    color: white !important;
+    box-shadow: 0 8px 18px rgba(239,111,147,0.24);
+    position: relative; overflow: hidden;
+}
 
-    div[class*="st-key-start_cycle_btn"] button::after,
-    div[class*="st-key-end_cycle_btn"] button::after,
-    div[class*="st-key-cta_"] button::after {
-        content: "";
-        position: absolute; top: 0; left: -60%;
-        width: 45%; height: 100%;
-        background: linear-gradient(120deg, transparent, rgba(255,255,255,0.5), transparent);
-        transform: skewX(-20deg);
-        transition: left 0.6s ease;
-    }
-    div[class*="st-key-start_cycle_btn"] button:hover::after,
-    div[class*="st-key-end_cycle_btn"] button:hover::after,
-    div[class*="st-key-cta_"] button:hover::after {
-        left: 130%;
-    }
+div[class*="st-key-start_cycle_btn"] button::after,
+div[class*="st-key-end_cycle_btn"] button::after,
+div[class*="st-key-cta_"] button::after {
+    content: "";
+    position: absolute; top: 0; left: -60%;
+    width: 45%; height: 100%;
+    background: linear-gradient(120deg, transparent, rgba(255,255,255,0.5), transparent);
+    transform: skewX(-20deg);
+    transition: left 0.6s ease;
+}
+div[class*="st-key-start_cycle_btn"] button:hover::after,
+div[class*="st-key-end_cycle_btn"] button:hover::after,
+div[class*="st-key-cta_"] button:hover::after {
+    left: 130%;
+}
 
-    div[class*="st-key-btn_"] button {
-        background: rgba(255,255,255,0.6) !important;
-        color: var(--ink) !important;
-        border: 1px solid rgba(0,0,0,0.07) !important;
-        padding: 0 14px; height: 2.15em;
-        font-size: 12.5px;
-        font-weight: 600;
-        box-shadow: none;
-    }
-    div[class*="st-key-btn_"] button:hover { background: rgba(255,255,255,0.92) !important; }
+div[class*="st-key-btn_"] button {
+    background: rgba(255,255,255,0.6) !important;
+    color: var(--ink) !important;
+    border: 1px solid rgba(0,0,0,0.07) !important;
+    padding: 0 14px; height: 2.15em;
+    font-size: 12.5px;
+    font-weight: 600;
+    box-shadow: none;
+}
+div[class*="st-key-btn_"] button:hover { background: rgba(255,255,255,0.92) !important; }
 
-    div[data-testid="stExpander"] {
-        background: rgba(255,255,255,0.42) !important;
-        border-radius: 18px !important;
-        border: 1px solid rgba(255,255,255,0.6) !important;
-        backdrop-filter: blur(8px);
-        margin-bottom: 12px;
-        overflow: hidden;
-    }
-    div[data-testid="stExpander"] summary { font-weight: 700 !important; }
+div[data-testid="stExpander"] {
+    background: rgba(255,255,255,0.42) !important;
+    border-radius: 18px !important;
+    border: 1px solid rgba(255,255,255,0.6) !important;
+    backdrop-filter: blur(8px);
+    margin-bottom: 12px;
+    overflow: hidden;
+}
+div[data-testid="stExpander"] summary { font-weight: 700 !important; }
 
-    hr { border-color: rgba(0,0,0,0.06) !important; }
-    </style>
-""", unsafe_allow_html=True)
+hr { border-color: rgba(0,0,0,0.06) !important; }
+</style>
+"""), unsafe_allow_html=True)
 
 class MacroData(BaseModel):
     calories: float = Field(description="Total energy value in kcal")
@@ -412,17 +413,17 @@ if cycle_records:
     latest_row = cycle_records[0]
     active_row_id = latest_row.get("id")
     latest_fields = latest_row.get("fields", {})
-    
+
     s_str = latest_fields.get("Start Date", "")
     e_str = latest_fields.get("End Date", "")
-    
+
     if s_str:
         try: last_start_date = datetime.strptime(s_str, "%Y-%m-%d").date()
         except Exception: pass
     if e_str:
         try: last_end_date = datetime.strptime(e_str, "%Y-%m-%d").date()
         except Exception: pass
-        
+
     if s_str and not e_str:
         is_period_active = True
 
@@ -431,240 +432,148 @@ if cycle_records:
 # ==========================================
 is_onboarded = bool(profile_map.get("Calories"))
 
+if is_onboarded:
+    # Pull saved targets from the Profile table and build threshold bands around them.
+    # "low" = the floor of the healthy/on-track zone, "high" = the target/ceiling.
+    def _to_float(key, fallback):
+        try: return float(profile_map.get(key, fallback))
+        except Exception: return fallback
+
+    saved_cal = _to_float("Calories", 1800)
+    saved_carbs = _to_float("Carbs", 200)
+    saved_protein = _to_float("Protein", 140)
+    saved_fats = _to_float("Fats", 70)
+
+    THRESHOLDS = {
+        "Calories": {"low": saved_cal * 0.7, "high": saved_cal},
+        "Carbs": {"low": saved_carbs * 0.6, "high": saved_carbs},
+        "Protein": {"low": saved_protein, "high": saved_protein * 1.3},
+        "Fats": {"low": saved_fats * 0.6, "high": saved_fats},
+    }
+
 if not is_onboarded:
-
-    st.markdown("""
+    # Custom Keyframe Animations for a living, swaying pocket garden scene
+    st.markdown(textwrap.dedent("""
     <style>
-
     @keyframes swayLeft {
-        0%,100% { transform: rotate(0deg); }
-        50% { transform: rotate(-8deg) translateY(-2px); }
+        0%, 100% { transform: rotate(0deg); }
+        50% { transform: rotate(-7deg) skewX(-4deg); }
     }
-
     @keyframes swayRight {
-        0%,100% { transform: rotate(0deg); }
-        50% { transform: rotate(8deg) translateY(-2px); }
+        0%, 100% { transform: rotate(0deg); }
+        50% { transform: rotate(8deg) skewX(5deg); }
+    }
+    @keyframes gentlePulse {
+        0%, 100% { transform: scale(1); opacity: 0.9; }
+        50% { transform: scale(1.05); opacity: 1; }
     }
 
-    @keyframes bearFloat {
-        0%,100% { transform: translateY(0px); }
-        50% { transform: translateY(-6px); }
+    .garden-onboarding {
+        background: rgba(255,255,255,0.6);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255,255,255,0.75);
+        border-radius: 24px;
+        padding: 30px 28px 80px 28px;
+        margin-bottom: 20px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 12px 35px rgba(239, 111, 147, 0.12);
+        text-align: center;
+        animation: floatIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
     }
 
-    @keyframes glowPulse {
-        0%,100% {
-            box-shadow: 0 10px 35px rgba(168,85,247,0.15);
-        }
-        50% {
-            box-shadow: 0 16px 50px rgba(168,85,247,0.28);
-        }
+    .garden-floor {
+        position: absolute;
+        bottom: -5px;
+        left: 0;
+        width: 100%;
+        height: 65px;
+        display: flex;
+        justify-content: space-around;
+        align-items: flex-end;
+        padding: 0 15px;
+        pointer-events: none;
+        opacity: 0.9;
+        border-bottom-left-radius: 24px;
+        border-bottom-right-radius: 24px;
     }
 
-    .garden-card{
-        position:relative;
-        overflow:hidden;
-        text-align:center;
-        padding:28px 24px 90px 24px;
-        margin-bottom:20px;
-
-        background:rgba(255,255,255,0.65);
-        backdrop-filter:blur(18px);
-        -webkit-backdrop-filter:blur(18px);
-
-        border-radius:28px;
-        border:1px solid rgba(255,255,255,0.8);
-
-        animation:glowPulse 5s ease-in-out infinite;
+    .garden-item {
+        font-size: 26px;
+        transform-origin: bottom center;
+        display: inline-block;
+        line-height: 1;
     }
 
-    .garden-title{
-        font-size:24px;
-        font-weight:700;
-        margin-bottom:10px;
-        color:#7c3aed;
-    }
-
-    .garden-subtitle{
-        font-size:14px;
-        color:#6b7280;
-        margin-bottom:10px;
-    }
-
-    .garden-floor{
-        position:absolute;
-        bottom:0;
-        left:0;
-        width:100%;
-        height:75px;
-
-        display:flex;
-        justify-content:space-evenly;
-        align-items:flex-end;
-
-        padding-bottom:10px;
-
-        background:linear-gradient(
-            to top,
-            rgba(196,181,253,0.45),
-            transparent
-        );
-    }
-
-    .garden-item{
-        display:inline-block;
-        transform-origin:bottom center;
-        line-height:1;
-    }
-
-    .grass1{
-        font-size:32px;
-        animation:swayLeft 3.0s ease-in-out infinite;
-    }
-
-    .grass2{
-        font-size:30px;
-        animation:swayRight 3.7s ease-in-out infinite;
-        animation-delay:.4s;
-    }
-
-    .grass3{
-        font-size:34px;
-        animation:swayLeft 4.2s ease-in-out infinite;
-        animation-delay:.8s;
-    }
-
-    .flower1{
-        font-size:34px;
-        animation:swayRight 4.5s ease-in-out infinite;
-        animation-delay:.3s;
-    }
-
-    .flower2{
-        font-size:34px;
-        animation:swayLeft 5s ease-in-out infinite;
-        animation-delay:.6s;
-    }
-
-    .flower3{
-        font-size:34px;
-        animation:swayRight 4s ease-in-out infinite;
-        animation-delay:.9s;
-    }
-
-    .bear{
-        font-size:28px;
-        animation:bearFloat 2.8s ease-in-out infinite;
-        padding-bottom:10px;
-    }
-
+    .item-grass-1 { animation: swayLeft 3.5s ease-in-out infinite; font-size: 22px; }
+    .item-flower-1 { animation: swayRight 4.2s ease-in-out infinite; animation-delay: 0.3s; }
+    .item-grass-2 { animation: swayLeft 2.9s ease-in-out infinite; animation-delay: 0.6s; font-size: 20px; }
+    .item-flower-2 { animation: swayLeft 4.8s ease-in-out infinite; animation-delay: 0.1s; }
+    .item-grass-3 { animation: swayRight 3.2s ease-in-out infinite; animation-delay: 0.8s; font-size: 24px; }
+    .item-flower-3 { animation: swayRight 4.0s ease-in-out infinite; animation-delay: 0.5s; }
+    .item-bear { animation: gentlePulse 3.0s ease-in-out infinite; font-size: 20px; padding-bottom: 12px; }
     </style>
 
-    <div class="garden-card">
-
-        <div class="garden-title">
-            💜 Aduu's Garden 💜
-        </div>
-
-        <div class="garden-subtitle">
-            Let's set up your custom health parameters baseline right now.
-        </div>
+    <div class="garden-onboarding">
+        <p class="note-text" style="font-size: 19px; font-weight: 600; margin-bottom: 8px;">🌸 Welcome to Addu's Garden 🧸</p>
+        <p style="font-size: 14.5px; color: var(--ink-soft); margin: 0; font-weight: 500;">Let's set up your custom health parameters baseline right now.</p>
 
         <div class="garden-floor">
-
-            <span class="garden-item grass1">🌱</span>
-
-            <span class="garden-item flower1">🌷</span>
-
-            <span class="garden-item grass2">🌿</span>
-
-            <span class="garden-item bear">🧸</span>
-
-            <span class="garden-item flower2">🌸</span>
-
-            <span class="garden-item grass3">🌱</span>
-
-            <span class="garden-item flower3">🌼</span>
-
+            <span class="garden-item item-grass-1">🌱</span>
+            <span class="garden-item item-flower-1">🌷</span>
+            <span class="garden-item item-grass-2">🌿</span>
+            <span class="garden-item item-bear">🧸</span>
+            <span class="garden-item item-flower-2">🌸</span>
+            <span class="garden-item item-grass-3">🌱</span>
+            <span class="garden-item item-flower-3">🌼</span>
         </div>
-
     </div>
-    """, unsafe_allow_html=True)
+    """), unsafe_allow_html=True)
 
     with st.form("onboarding_form"):
         h_in = st.number_input("Height (cm)", min_value=100, max_value=250, value=160)
         w_in = st.number_input("Weight (kg)", min_value=30.0, max_value=200.0, value=55.0, step=0.1)
-
-        act_in = st.selectbox(
-            "Exercise Frequency / Activity Level",
-            [
-                "Sedentary (Little or no exercise)",
-                "Lightly Active (Light exercise 1-3 days/week)",
-                "Moderately Active (Moderate exercise 3-5 days/week)",
-                "Very Active (Hard exercise 6-7 days/week)"
-            ]
-        )
-
-        submit_setup = st.form_submit_button(
-            "Generate My Custom Dashboard",
-            key="cta_onboard"
-        )
+        act_in = st.selectbox("Exercise Frequency / Activity Level", [
+            "Sedentary (Little or no exercise)",
+            "Lightly Active (Light exercise 1-3 days/week)",
+            "Moderately Active (Moderate exercise 3-5 days/week)",
+            "Very Active (Hard exercise 6-7 days/week)"
+        ])
+        submit_setup = st.form_submit_button("Generate My Custom Dashboard", key="cta_onboard")
 
         if submit_setup:
             try:
                 bmr = 447.593 + (9.247 * w_in) + (3.098 * h_in) - (4.330 * 23)
-
                 multiplier = 1.2
-                if "Lightly" in act_in:
-                    multiplier = 1.375
-                elif "Moderately" in act_in:
-                    multiplier = 1.55
-                elif "Very" in act_in:
-                    multiplier = 1.725
+                if "Lightly" in act_in: multiplier = 1.375
+                elif "Moderately" in act_in: multiplier = 1.55
+                elif "Very" in act_in: multiplier = 1.725
 
                 tdee = bmr * multiplier
-
                 target_cal = round(tdee - 350)
                 target_carbs = round((target_cal * 0.40) / 4)
                 target_protein = round((target_cal * 0.30) / 4)
                 target_fats = round((target_cal * 0.30) / 9)
 
                 updates = {
-                    "Height": str(h_in),
-                    "Weight": str(w_in),
-                    "ActivityLevel": act_in,
-                    "Calories": str(target_cal),
-                    "Carbs": str(target_carbs),
-                    "Protein": str(target_protein),
-                    "Fats": str(target_fats)
+                    "Height": str(h_in), "Weight": str(w_in), "ActivityLevel": act_in,
+                    "Calories": str(target_cal), "Carbs": str(target_carbs),
+                    "Protein": str(target_protein), "Fats": str(target_fats)
                 }
 
                 failures = []
-
                 for field_key, field_val in updates.items():
                     r_id = profile_row_ids.get(field_key)
-
                     if r_id:
-                        ok, err = airtable_patch(
-                            "Profile",
-                            r_id,
-                            {"Value": field_val}
-                        )
-
-                        if not ok:
-                            failures.append(f"{field_key}: {err}")
-
+                        ok, err = airtable_patch("Profile", r_id, {"Value": field_val})
+                        if not ok: failures.append(f"{field_key}: {err}")
                 if failures:
                     st.error("Some values didn't save: " + " | ".join(failures))
                 else:
-                    st.success(
-                        "Your customized dashboard has been calculated and initialized! Loading..."
-                    )
-                    st.cache_data.clear()
-                    st.rerun()
-
-            except Exception as e:
-                st.error(f"Setup Error: {e}")
-
+                    st.success("Your customized dashboard has been calculated and initialized! Loading...")
+                    st.cache_data.clear(); st.rerun()
+            except Exception as e: st.error(f"Setup Error: {e}")
     st.stop()
 # ==========================================
 # 5. HIGH-END ROTATING PHRASE COMPLIMENTS ENGINE
@@ -826,16 +735,16 @@ prot_target = THRESHOLDS["Protein"]["low"]
 def render_bloom_card(icon, label, value, unit, target, color, delay=0.0):
     try: pct = max(0, min((value / target) * 100, 100)) if target else 0
     except Exception: pct = 0
-    st.markdown(f"""
-        <div class="bloom-card" style="animation-delay:{delay}s;">
-            <div class="bloom-ring" style="background: conic-gradient({color} {pct:.1f}%, rgba(0,0,0,0.07) 0);">
-                <div class="bloom-inner"><span class="bloom-icon">{icon}</span></div>
-            </div>
-            <div class="bloom-label">{label}</div>
-            <div class="bloom-value">{value:.0f}<span class="bloom-unit">{unit}</span></div>
-            <div class="bloom-target">of {target:.0f}{unit} goal</div>
+    st.markdown(textwrap.dedent(f"""
+    <div class="bloom-card" style="animation-delay:{delay}s;">
+        <div class="bloom-ring" style="background: conic-gradient({color} {pct:.1f}%, rgba(0,0,0,0.07) 0);">
+            <div class="bloom-inner"><span class="bloom-icon">{icon}</span></div>
         </div>
-    """, unsafe_allow_html=True)
+        <div class="bloom-label">{label}</div>
+        <div class="bloom-value">{value:.0f}<span class="bloom-unit">{unit}</span></div>
+        <div class="bloom-target">of {target:.0f}{unit} goal</div>
+    </div>
+    """), unsafe_allow_html=True)
 
 col1, col2 = st.columns(2)
 with col1:
@@ -858,29 +767,29 @@ if cycle_banner:
     else: st.markdown(f'<div class="cycle-outlook outlook-{tone}">{text}</div>', unsafe_allow_html=True)
 
 if is_period_active:
-    st.markdown("""
-        <div class="cycle-card cycle-active">
-            <div class="cycle-icon">🌷</div>
-            <div>
-                <div class="cycle-title">Cycle is active</div>
-                <div class="cycle-sub">Take it slow today, love — warm tea, rest, zero pressure.</div>
-            </div>
+    st.markdown(textwrap.dedent("""
+    <div class="cycle-card cycle-active">
+        <div class="cycle-icon">🌷</div>
+        <div>
+            <div class="cycle-title">Cycle is active</div>
+            <div class="cycle-sub">Take it slow today, love — warm tea, rest, zero pressure.</div>
         </div>
-    """, unsafe_allow_html=True)
+    </div>
+    """), unsafe_allow_html=True)
     if st.button("🌸 Mark as ended", key="end_cycle_btn"):
         ok, err = airtable_patch("Cycles", active_row_id, {"End Date": today_str})
         if ok: st.cache_data.clear(); st.rerun()
         else: st.error(f"Error updating cycle: {err}")
 else:
-    st.markdown("""
-        <div class="cycle-card cycle-idle">
-            <div class="cycle-icon">🌿</div>
-            <div>
-                <div class="cycle-title">No active cycle</div>
-                <div class="cycle-sub">Tap below whenever it starts — I'll take it from there.</div>
-            </div>
+    st.markdown(textwrap.dedent("""
+    <div class="cycle-card cycle-idle">
+        <div class="cycle-icon">🌿</div>
+        <div>
+            <div class="cycle-title">No active cycle</div>
+            <div class="cycle-sub">Tap below whenever it starts — I'll take it from there.</div>
         </div>
-    """, unsafe_allow_html=True)
+    </div>
+    """), unsafe_allow_html=True)
     if st.button("🩸 Period started today", key="start_cycle_btn"):
         ok, err = airtable_post("Cycles", {"Start Date": today_str, "Notes": "Logged via Companion App Dashboard"})
         if ok: st.cache_data.clear(); st.rerun()
@@ -896,7 +805,7 @@ with st.expander("🗓️ Retroactively log cycle dates"):
         if submit_c:
             payload = {"Start Date": c_start.strftime("%Y-%m-%d"), "Notes": c_notes}
             if c_end: payload["End Date"] = c_end.strftime("%Y-%m-%d")
-            
+
             ok, err = airtable_post("Cycles", payload)
             if ok:
                 st.success("Cycle history updated!")
