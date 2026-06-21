@@ -52,7 +52,7 @@ st.markdown("""
         to   { opacity: 1; transform: scale(1); }
     }
     @keyframes flicker {
-        0%, 100__% { transform: scale(1) rotate(0deg); }
+        0%, 100% { transform: scale(1) rotate(0deg); }
         50% { transform: scale(1.15) rotate(-4deg); }
     }
 
@@ -219,17 +219,17 @@ st.markdown("""
     .cycle-idle { 
         background: linear-gradient(90deg, 
             rgba(143, 227, 196, 0.45) 0%, 
-            rgba(255, 250, 246, 0.70) 60%, 
-            rgba(255, 209, 222, 0.60) 100
+            rgba(255, 250, 246, 0.85) 50%, 
+            rgba(255, 209, 222, 0.45) 100
         ) !important;
     }
     
     /* Active State Flow direction flipped gracefully */
     .cycle-active { 
         background: linear-gradient(90deg, 
-            rgba(255, 182, 200, 0.55) 0%, 
-            rgba(255, 250, 246, 0.70) 60%, 
-            rgba(143, 227, 196, 0.50) 100
+            rgba(255, 209, 222, 0.55) 0%, 
+            rgba(255, 250, 246, 0.85) 50%, 
+            rgba(143, 227, 196, 0.35) 100
         ) !important;
     }
     
@@ -742,6 +742,7 @@ if is_period_active:
         </div>
     """, unsafe_allow_html=True)
     
+    # Text mutation logic for Active Cycle action button
     active_btn_label = "🌸 Ended today" if last_start_date == current_date_obj else "🌸 Mark as ended"
     
     if st.button(active_btn_label, key="end_cycle_btn"):
@@ -762,6 +763,7 @@ else:
         </div>
     """, unsafe_allow_html=True)
     
+    # Text mutation logic for Idle Cycle action button
     idle_btn_label = "🩸 Started today" if last_end_date == current_date_obj else "🩸 Period started today"
     
     if st.button(idle_btn_label, key="start_cycle_btn"):
