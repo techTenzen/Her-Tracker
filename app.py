@@ -676,134 +676,141 @@ if cycle_banner:
     if tone == "upcoming": st.markdown(f'<div class="milestone-line">🗓️ {text}</div>', unsafe_allow_html=True)
     else: st.markdown(f'<div class="cycle-outlook outlook-{tone}">{text}</div>', unsafe_allow_html=True)
 
-# --- QUERY PARAMETER CLICK HANDLER ---
-# Captures raw HTML button clicks cleanly within Streamlit's execution loop
-if "action" in st.query_params:
-    action_type = st.query_params["action"]
-    if action_type == "start_cycle":
-        ok, err = airtable_post("Cycles", {"Start Date": today_str, "Notes": "Logged via Companion App Dashboard"})
-        if ok: 
-            st.query_params.clear()
-            st.cache_data.clear()
-            st.rerun()
-        else: st.error(f"Error saving cycle start: {err}")
-    elif action_type == "end_cycle":
-        ok, err = airtable_patch("Cycles", active_row_id, {"End Date": today_str})
-        if ok: 
-            st.query_params.clear()
-            st.cache_data.clear()
-            st.rerun()
-        else: st.error(f"Error updating cycle: {err}")
+# Calculate relative days for clean display injection
+days_display_text = ""
+if all_starts:
+    last_start = all_starts[-1]
+    if is_period_active:
+        # Assuming a standard healthy phase duration of 5 days for the countdown active state
+        expected_end = last_start + timedelta(days=5)
+        if today_date <= expected_end:
+            days_left = (expected_end - today_date).days
+            days_display_text = f"~{days_left} day{'s' if days_left != 1 else ''} left"
+        else:
+            days_over = (today_date - expected_end).days
+            days_display_text = f"Day {5 + days_over} — running longer"
+    else:
+        predicted_next = last_start + timedelta(days=avg_cycle_len)
+        if today_date < predicted_next:
+            days_until = (predicted_next - today_date).days
+            days_display_text = f"{days_until} day{'s' if days_until != 1 else ''} away"
+        elif today_date == predicted_next:
+            days_display_text = "Due today 🌷"
+        else:
+            days_late = (today_date - predicted_next).days
+            days_display_text = f"{days_late} day{'s' if days_late != 1 else ''} late"
 
-# --- STYLING & PERFECT GRADIENT FLOW ---
+# --- REFINED SEAMLESS LAYOUT STYLING ---
 st.markdown("""
     <style>
-    /* The core container balancing the 80/20 dynamic row alignment */
-    .split-card-row {
+    /* Continuous skin-tone style gradient flow across the full container block */
+    .gardening-flow-card {
         display: flex;
-        width: 100%;
-        height: 84px;
+        align-items: center;
+        justify-content: space-between;
         border-radius: 20px;
-        overflow: hidden;
-        border: 1px solid rgba(255, 255, 255, 0.65);
-        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.05);
+        padding: 16px 20px;
+        margin-bottom: 12px;
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
-        margin-bottom: 16px;
+        border: 1px solid rgba(255,255,255,0.65);
+        box-shadow: 0 8px 22px rgba(0,0,0,0.05);
+    }
+    
+    .gardening-flow-card.flow-idle {
+        background: linear-gradient(90deg, 
+            rgba(143, 227, 196, 0.45) 0%,   /* Soft Jade Mint */
+            rgba(255, 250, 246, 0.70) 60%,  /* Warm Milky Cream */
+            rgba(255, 209, 222, 0.60) 100%  /* Soft Light Pink transition end stop */
+        ) !important;
     }
 
-    /* Left Side: 80% Content Section */
-    .split-left-content {
-        width: 80%;
+    .gardening-flow-card.flow-active {
+        background: linear-gradient(90deg, 
+            rgba(255, 182, 200, 0.55) 0%,   /* Soft Rose Pink */
+            rgba(255, 250, 246, 0.70) 60%,  /* Cream */
+            rgba(143, 227, 196, 0.50) 100%  /* Jade Mint transition end stop */
+        ) !important;
+    }
+
+    .flow-left-content {
         display: flex;
         align-items: center;
         gap: 14px;
-        padding-left: 18px;
     }
 
-    /* Right Side: 20% Interactive Button Section */
-    .split-right-btn {
-        width: 20%;
-        height: 100%;
-        border: none;
-        margin: 0;
-        padding: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: 'Quicksand', sans-serif;
-        font-weight: 700;
-        font-size: 14px;
-        color: white;
-        cursor: pointer;
-        transition: opacity 0.2s ease, filter 0.2s ease;
-        text-decoration: none;
-    }
-    .split-right-btn:hover {
-        filter: brightness(0.95);
+    /* Elegant right aligned countdown pill badge inside the container */
+    .flow-countdown-badge {
+        font-family: 'Fraunces', serif;
+        font-weight: 600;
+        font-style: italic;
+        font-size: 15px;
+        color: #5a5465;
+        background: rgba(255, 255, 255, 0.45);
+        padding: 4px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.5);
     }
 
-    /* --- IDLE PALETTE (Continuous Green -> White -> Pink Gradient) --- */
-    .idle-row {
-        background: linear-gradient(90deg, 
-            rgba(143, 227, 196, 0.5) 0%,   /* Soft Green */
-            rgba(255, 250, 246, 0.7) 65%,  /* Blends smoothly out to creamy white */
-            rgba(242, 134, 164, 0.9) 100%  /* Finishes inside the deep pink zone */
-        ) !important;
+    /* Separate Light Pink custom button overrides sitting underneath */
+    div[class*="st-key-separate_action_btn"] button {
+        width: 100% !important;
+        height: 2.6em !important;
+        background: linear-gradient(135deg, #ffdee7 0%, #ffcbd7 100%) !important;
+        color: #e0527b !important;
+        border: 1px solid rgba(239, 111, 147, 0.2) !important;
+        border-radius: 999px !important;
+        box-shadow: 0 4px 12px rgba(239, 111, 147, 0.1) !important;
+        font-size: 13.5px !important;
+        font-weight: 700 !important;
+        transition: transform 0.15s ease, box-shadow 0.15s ease !important;
     }
-    /* Button steps forward down the color ramp with an increased depth overlay */
-    .idle-btn-color {
-        background: rgba(239, 111, 147, 0.95);
-    }
-
-    /* --- ACTIVE PALETTE (Continuous Pink -> White -> Emerald Gradient) --- */
-    .active-row {
-        background: linear-gradient(90deg, 
-            rgba(255, 182, 200, 0.6) 0%,   /* Soft Pink */
-            rgba(255, 250, 246, 0.7) 65%,  /* Creamy White */
-            rgba(52, 186, 139, 0.9) 100%   /* Emerald finish line */
-        ) !important;
-    }
-    /* Active target column color continuation rules */
-    .active-btn-color {
-        background: rgba(31, 169, 122, 0.95);
+    div[class*="st-key-separate_action_btn"] button:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 6px 16px rgba(239, 111, 147, 0.18) !important;
+        background: linear-gradient(135deg, #ffe7ee 0%, #ffdae3 100%) !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# --- CONDITIONAL INTERFACE INJECTION ---
+# --- CORE CONDITIONAL LAYOUT GENERATION ---
 if is_period_active:
     st.markdown(f"""
-        <div class="split-card-row active-row">
-            <div class="split-left-content">
+        <div class="gardening-flow-card flow-active">
+            <div class="flow-left-content">
                 <div class="cycle-icon">🌷</div>
                 <div>
                     <div class="cycle-title">Cycle is active</div>
                     <div class="cycle-sub">Take it slow today, love — warm tea, rest, zero pressure.</div>
                 </div>
             </div>
-            <a href="?action=end_cycle" target="_self" class="split-right-btn active-btn-color">
-                🌸 End
-            </a>
+            {"<div class='flow-countdown-badge'>" + days_display_text + "</div>" if days_display_text else ""}
         </div>
     """, unsafe_allow_html=True)
+    
+    # Simple, standalone functional button right below the card
+    if st.button("🌸 Mark as ended", key="separate_action_btn"):
+        ok, err = airtable_patch("Cycles", active_row_id, {"End Date": today_str})
+        if ok: st.cache_data.clear(); st.rerun()
+        else: st.error(f"Error updating cycle: {err}")
 else:
     st.markdown(f"""
-        <div class="split-card-row idle-row">
-            <div class="split-left-content">
+        <div class="gardening-flow-card flow-idle">
+            <div class="flow-left-content">
                 <div class="cycle-icon">🌿</div>
                 <div>
                     <div class="cycle-title">No active cycle</div>
                     <div class="cycle-sub">Log it here when it starts — I'll take it from there.</div>
                 </div>
             </div>
-            <a href="?action=start_cycle" target="_self" class="split-right-btn idle-btn-color">
-                🩸 Start
-            </a>
+            {"<div class='flow-countdown-badge'>" + days_display_text + "</div>" if days_display_text else ""}
         </div>
     """, unsafe_allow_html=True)
-
-st.markdown("<div style='margin-bottom: 4px;'></div>", unsafe_allow_html=True)
+    
+    if st.button("🩸 Period started today", key="separate_action_btn"):
+        ok, err = airtable_post("Cycles", {"Start Date": today_str, "Notes": "Logged via Companion App Dashboard"})
+        if ok: st.cache_data.clear(); st.rerun()
+        else: st.error(f"Error saving cycle start: {err}")
 
 # Backdate Cycle Fallback Manual Overrides
 with st.expander("🗓️ Retroactively log cycle dates"):
