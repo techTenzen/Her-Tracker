@@ -214,61 +214,21 @@ st.markdown("""
     }
     .bloom-divider span { padding: 0 12px; font-size: 14px; }
 
-    /* ---- Cycle companion card with Shifting Skin-Tone Flow Gradient ---- */
+    /* ---- Cycle companion card ---- */
     .cycle-card {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+        display: flex; align-items: center; gap: 14px;
         border-radius: 20px;
         padding: 16px 18px;
         margin-bottom: 10px;
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
-        border: 1px solid rgba(255,255,255,0.65);
-        box-shadow: 0 8px 20px rgba(0,0,0,0.04);
         animation: floatIn 0.6s ease both;
     }
-    
-    /* Blends from Soft Jade Mint through Milky Cream into soft muted Light Pink */
-    .cycle-idle { 
-        background: linear-gradient(90deg, 
-            rgba(143, 227, 196, 0.45) 0%, 
-            rgba(255, 250, 246, 0.70) 60%, 
-            rgba(255, 209, 222, 0.60) 100%
-        ) !important;
-    }
-    
-    /* Active State Flow direction flipped gracefully */
-    .cycle-active { 
-        background: linear-gradient(90deg, 
-            rgba(255, 182, 200, 0.55) 0%, 
-            rgba(255, 250, 246, 0.70) 60%, 
-            rgba(143, 227, 196, 0.50) 100%
-        ) !important;
-    }
-    
-    .cycle-left-layout {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-    }
+    .cycle-active { background: linear-gradient(135deg, rgba(255,182,200,0.5), rgba(255,255,255,0.5)); box-shadow: 0 8px 20px rgba(239,111,147,0.16); }
+    .cycle-idle { background: linear-gradient(135deg, rgba(143,227,196,0.4), rgba(255,255,255,0.5)); box-shadow: 0 8px 20px rgba(31,169,122,0.11); }
     .cycle-icon { font-size: 27px; }
     .cycle-title { font-weight: 700; font-size: 14.5px; color: var(--ink); }
     .cycle-sub { font-size: 12.5px; color: var(--ink-soft); margin-top: 1px; }
-
-    /* Translucent Right Aligned Countdown Badge */
-    .cycle-countdown-pill {
-        font-family: 'Fraunces', serif;
-        font-weight: 600;
-        font-style: italic;
-        font-size: 14px;
-        color: #5a5465;
-        background: rgba(255, 255, 255, 0.5);
-        padding: 5px 14px;
-        border-radius: 999px;
-        border: 1px solid rgba(255, 255, 255, 0.6);
-        white-space: nowrap;
-    }
 
     /* Cycle outlook banner */
     .cycle-outlook {
@@ -716,72 +676,31 @@ if cycle_banner:
     if tone == "upcoming": st.markdown(f'<div class="milestone-line">🗓️ {text}</div>', unsafe_allow_html=True)
     else: st.markdown(f'<div class="cycle-outlook outlook-{tone}">{text}</div>', unsafe_allow_html=True)
 
-# --- DYNAMIC X DAYS COUNTDOWN CALCULATOR ---
-days_display_text = ""
-if all_starts:
-    last_start = all_starts[-1]
-    if is_period_active:
-        # Standard structural cycle window expectation (5 days)
-        expected_end = last_start + timedelta(days=5)
-        if today_date <= expected_end:
-            days_left = (expected_end - today_date).days
-            days_display_text = f"~{days_left} day{'s' if days_left != 1 else ''} left"
-        else:
-            days_over = (today_date - expected_end).days
-            days_display_text = f"Day {5 + days_over}"
-    else:
-        predicted_next = last_start + timedelta(days=avg_cycle_len)
-        if today_date < predicted_next:
-            days_until = (predicted_next - today_date).days
-            days_display_text = f"{days_until} day{'s' if days_until != 1 else ''} away"
-        elif today_date == predicted_next:
-            days_display_text = "Due today 🌷"
-        else:
-            days_late = (today_date - predicted_next).days
-            days_display_text = f"{days_late} day{'s' if days_late != 1 else ''} late"
-
-# Get current system date object for button comparisons
-current_date_obj = now.date()
-
 if is_period_active:
-    st.markdown(f"""
+    st.markdown("""
         <div class="cycle-card cycle-active">
-            <div class="cycle-left-layout">
-                <div class="cycle-icon">🌷</div>
-                <div>
-                    <div class="cycle-title">Cycle is active</div>
-                    <div class="cycle-sub">Take it slow today, love — warm tea, rest, zero pressure.</div>
-                </div>
+            <div class="cycle-icon">🌷</div>
+            <div>
+                <div class="cycle-title">Cycle is active</div>
+                <div class="cycle-sub">Take it slow today, love — warm tea, rest, zero pressure.</div>
             </div>
-            {"<div class='cycle-countdown-pill'>" + days_display_text + "</div>" if days_display_text else ""}
         </div>
     """, unsafe_allow_html=True)
-    
-    # DYNAMIC TEXT: Check if the cycle was started today
-    active_btn_label = "🌸 Ended today" if last_start_date == current_date_obj else "🌸 Mark as ended"
-    
-    if st.button(active_btn_label, key="end_cycle_btn"):
+    if st.button("🌸 Mark as ended", key="end_cycle_btn"):
         ok, err = airtable_patch("Cycles", active_row_id, {"End Date": today_str})
         if ok: st.cache_data.clear(); st.rerun()
         else: st.error(f"Error updating cycle: {err}")
 else:
-    st.markdown(f"""
+    st.markdown("""
         <div class="cycle-card cycle-idle">
-            <div class="cycle-left-layout">
-                <div class="cycle-icon">🌿</div>
-                <div>
-                    <div class="cycle-title">No active cycle</div>
-                    <div class="cycle-sub">Log it here when it starts — I'll take it from there.</div>
-                </div>
+            <div class="cycle-icon">🌿</div>
+            <div>
+                <div class="cycle-title">No active cycle</div>
+                <div class="cycle-sub">Tap below whenever it starts — I'll take it from there.</div>
             </div>
-            {"<div class='cycle-countdown-pill'>" + days_display_text + "</div>" if days_display_text else ""}
         </div>
     """, unsafe_allow_html=True)
-    
-    # DYNAMIC TEXT: Check if a cycle was closed out today
-    idle_btn_label = "🩸 Started today" if last_end_date == current_date_obj else "🩸 Period started today"
-    
-    if st.button(idle_btn_label, key="start_cycle_btn"):
+    if st.button("🩸 Period started today", key="start_cycle_btn"):
         ok, err = airtable_post("Cycles", {"Start Date": today_str, "Notes": "Logged via Companion App Dashboard"})
         if ok: st.cache_data.clear(); st.rerun()
         else: st.error(f"Error saving cycle start: {err}")
@@ -802,6 +721,77 @@ with st.expander("🗓️ Retroactively log cycle dates"):
                 st.success("Cycle history updated!")
                 st.cache_data.clear(); st.rerun()
             else: st.error(f"Error saving log: {err}")
+
+st.markdown('<div class="bloom-divider"><span>🌸</span></div>', unsafe_allow_html=True)
+
+# Meals and Weight Logging Accordions
+repeated_foods = [food for food, count in Counter(food_history_pool).items() if count >= 3]
+
+with st.expander("📝 Log food entries", expanded=False):
+    log_date_target = st.date_input("Logging for which day?", value=now.date(), key="diet_log_date")
+
+    if repeated_foods:
+        st.caption("⚡ Quick Log Favorites:")
+        cols = st.columns(min(len(repeated_foods), 3))
+        for idx, food in enumerate(repeated_foods[:6]):
+            if cols[idx % 3].button(f"➕ {food[:18]}", key=f"btn_{idx}"):
+                st.session_state["her_meal_input"] = food.strip().title()
+                st.rerun()
+
+    default_text = st.session_state.get("her_meal_input", "")
+    meal_input = st.text_area("What did you eat?", value=default_text, placeholder="e.g., 1 Banana, 2 Roti, 2 Eggs")
+    submit_meal = st.button("Log Daily Meal Block", key="cta_meal")
+
+    if submit_meal and meal_input:
+        with st.spinner("AI calculating customized macros..."):
+            try:
+                clean_meal_text = meal_input.strip().title()
+                res = client.models.generate_content(
+                    model='gemini-2.5-flash', contents=f"Analyze macros for this description: {clean_meal_text}",
+                    config=types.GenerateContentConfig(response_mime_type="application/json", response_schema=MacroData, temperature=0.1),
+                )
+                macros = json.loads(res.text)
+
+                current_time = now.strftime("%Y-%m-%d %I:%M %p") if log_date_target.strftime("%Y-%m-%d") == today_str else f"{log_date_target.strftime('%Y-%m-%d')} 10:00 PM"
+                data = {
+                    "Timestamp": current_time, "Food Items": clean_meal_text,
+                    "Calories": float(macros["calories"]), "Protein": float(macros["protein"]),
+                    "Carbs": float(macros["carbs"]), "Fats": float(macros["fats"])
+                }
+                ok, err = airtable_post("Diet", data)
+                if "her_meal_input" in st.session_state: del st.session_state["her_meal_input"]
+                if ok: st.success("Macros tracked successfully!"); st.cache_data.clear(); st.rerun()
+                else: st.error(f"Error saving to Airtable: {err}")
+            except Exception as e: st.error(f"Error: {e}")
+
+with st.expander("⚖️ Log weight metric", expanded=False):
+    with st.form("weight_form", clear_on_submit=True):
+        weight_date_target = st.date_input("Logging for which day?", value=now.date(), key="w_date_track")
+        weight_input = st.number_input("Weight (kg)", min_value=10.0, max_value=250.0, step=0.05, format="%.2f")
+        submit_weight = st.form_submit_button("Log Weight", key="cta_weight")
+
+        if submit_weight and weight_input > 10.0:
+            try:
+                current_time = now.strftime("%Y-%m-%d %I:%M %p") if weight_date_target.strftime("%Y-%m-%d") == today_str else f"{weight_date_target.strftime('%Y-%m-%d')} 10:00 PM"
+                ok, err = airtable_post("Weight", {"Timestamp": current_time, "Weight": float(weight_input)})
+                if ok: st.success("Weight recorded!"); st.cache_data.clear(); st.rerun()
+                else: st.error(f"Error saving to Airtable: {err}")
+            except Exception as e: st.error(f"Error: {e}")
+
+with st.expander("✨ Log a milestone / moment", expanded=False):
+    with st.form("moments_form", clear_on_submit=True):
+        moment_date = st.date_input("When did this happen?", value=now.date())
+        moment_text = st.text_input("What did you achieve?", placeholder="e.g., Left Sugar, Finished Exam Block")
+        show_on_top_check = st.checkbox("Pin to top highlight banner?", value=True)
+        if st.form_submit_button("Save Moment", key="cta_moment"):
+            try:
+                clean_moment = moment_text.strip().title()
+                ok, err = airtable_post("Moments", {"Date": moment_date.strftime("%Y-%m-%d"), "Moment": clean_moment, "Show On Top": show_on_top_check})
+                if ok: st.success("Milestone saved!"); st.cache_data.clear(); st.rerun()
+                else: st.error(f"Error saving to Airtable: {err}")
+            except Exception as e: st.error(f"Error: {e}")
+
+st.markdown('<div class="bloom-divider"><span>🌼</span></div>', unsafe_allow_html=True)
 
 # ==========================================
 # 8. ANALYTICS VISUALIZATIONS & TREND CURVES
