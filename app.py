@@ -432,7 +432,87 @@ if cycle_records:
 is_onboarded = bool(profile_map.get("Calories"))
 
 if not is_onboarded:
-    st.markdown('<div class="note-card"><p class="note-text">🌸 Welcome to Addu\'s Garden 🧸<br>Let\'s set up your custom health parameters baseline right now.</p></div>', unsafe_allow_html=True)
+    # Custom Keyframe Animations for a living, swaying pocket garden scene
+    st.markdown("""
+        <style>
+        @keyframes swayLeft {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(-5deg) skewX(-3deg); }
+        }
+        @keyframes swayRight {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(6deg) skewX(4deg); }
+        }
+        @keyframes gentlePulse {
+            0%, 100% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.05); opacity: 1; }
+        }
+        
+        .garden-onboarding {
+            background: rgba(255,255,255,0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.75);
+            border-radius: 24px;
+            padding: 30px 28px 80px 28px; /* Extra bottom padding to clear the floating garden elements */
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 12px 35px rgba(239, 111, 147, 0.12);
+            text-align: center;
+            animation: floatIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        
+        /* Interactive dynamic swaying garden elements layered at the base of the welcome card */
+        .garden-floor {
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 100%;
+            height: 65px;
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-end;
+            padding: 0 15px;
+            pointer-events: none;
+            opacity: 0.85;
+            border-bottom-left-radius: 24px;
+            border-bottom-right-radius: 24px;
+        }
+        
+        .garden-item {
+            font-size: 26px;
+            transform-origin: bottom center;
+            display: inline-block;
+            line-height: 1;
+        }
+        
+        /* Explicit stagger variation to mimic natural wind currents */
+        .item-grass-1 { animation: swayLeft 3.5s ease-in-out infinite; font-size: 22px; }
+        .item-flower-1 { animation: swayRight 4.2s ease-in-out infinite; animation-delay: 0.3s; }
+        .item-grass-2 { animation: swayLeft 2.9s ease-in-out infinite; animation-delay: 0.6s; font-size: 20px; }
+        .item-flower-2 { animation: swayLeft 4.8s ease-in-out infinite; animation-delay: 0.1s; }
+        .item-grass-3 { animation: swayRight 3.2s ease-in-out infinite; animation-delay: 0.8s; font-size: 24px; }
+        .item-flower-3 { animation: swayRight 4.0s ease-in-out infinite; animation-delay: 0.5s; }
+        .item-bear { animation: gentlePulse 3.0s ease-in-out infinite; font-size: 20px; padding-bottom: 12px; }
+        </style>
+        
+        <div class="garden-onboarding">
+            <p class="note-text" style="font-size: 19px; font-weight: 600; margin-bottom: 8px;">🌸 Welcome to Addu's Garden 🧸</p>
+            <p style="font-size: 14.5px; color: var(--ink-soft); margin: 0; font-weight: 500;">Let's set up your custom health parameters baseline right now.</p>
+            
+            <div class="garden-floor">
+                <span class="garden-item item-grass-1">🌱</span>
+                <span class="garden-item item-flower-1">🌷</span>
+                <span class="garden-item item-grass-2">🌿</span>
+                <span class="garden-item item-bear">🧸</span>
+                <span class="garden-item item-flower-2">🌸</span>
+                <span class="garden-item item-grass-3">🌱</span>
+                <span class="garden-item item-flower-3">🌼</span>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
     with st.form("onboarding_form"):
         h_in = st.number_input("Height (cm)", min_value=100, max_value=250, value=160)
         w_in = st.number_input("Weight (kg)", min_value=30.0, max_value=200.0, value=55.0, step=0.1)
@@ -477,14 +557,6 @@ if not is_onboarded:
                     st.cache_data.clear(); st.rerun()
             except Exception as e: st.error(f"Setup Error: {e}")
     st.stop()
-
-THRESHOLDS = {
-    "Calories": {"low": float(profile_map.get("Calories", 1400)) - 50, "high": float(profile_map.get("Calories", 1400)), "reverse": False},
-    "Carbs": {"low": float(profile_map.get("Carbs", 130)) - 10, "high": float(profile_map.get("Carbs", 130)), "reverse": False},
-    "Fats": {"low": float(profile_map.get("Fats", 40)) - 5, "high": float(profile_map.get("Fats", 40)), "reverse": False},
-    "Protein": {"low": float(profile_map.get("Protein", 80)), "high": float(profile_map.get("Protein", 80)) + 15, "reverse": True}
-}
-
 # ==========================================
 # 5. HIGH-END ROTATING PHRASE COMPLIMENTS ENGINE
 # ==========================================
