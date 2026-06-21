@@ -677,33 +677,44 @@ if cycle_banner:
     else: st.markdown(f'<div class="cycle-outlook outlook-{tone}">{text}</div>', unsafe_allow_html=True)
 
 if is_period_active:
-    st.markdown("""
-        <div class="cycle-card cycle-active">
-            <div class="cycle-icon">🌷</div>
-            <div>
-                <div class="cycle-title">Cycle is active</div>
-                <div class="cycle-sub">Take it slow today, love — warm tea, rest, zero pressure.</div>
+    # Use columns to align the text and button horizontally on the same line
+    c_left, c_right = st.columns([3, 1.2])
+    with c_left:
+        st.markdown("""
+            <div class="cycle-card cycle-active">
+                <div class="cycle-icon">🌷</div>
+                <div>
+                    <div class="cycle-title">Cycle is active</div>
+                    <div class="cycle-sub">Take it slow today, love — warm tea, rest, zero pressure.</div>
+                </div>
             </div>
-        </div>
-    """, unsafe_allow_html=True)
-    if st.button("🌸 Mark as ended", key="end_cycle_btn"):
-        ok, err = airtable_patch("Cycles", active_row_id, {"End Date": today_str})
-        if ok: st.cache_data.clear(); st.rerun()
-        else: st.error(f"Error updating cycle: {err}")
+        """, unsafe_allow_html=True)
+    with c_right:
+        # Pushes down the button slightly to visually balance with the card height
+        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+        if st.button("🌸 Mark as ended", key="end_cycle_btn"):
+            ok, err = airtable_patch("Cycles", active_row_id, {"End Date": today_str})
+            if ok: st.cache_data.clear(); st.rerun()
+            else: st.error(f"Error updating cycle: {err}")
 else:
-    st.markdown("""
-        <div class="cycle-card cycle-idle">
-            <div class="cycle-icon">🌿</div>
-            <div>
-                <div class="cycle-title">No active cycle</div>
-                <div class="cycle-sub">Tap below whenever it starts — I'll take it from there.</div>
+    # Match structural column scaling for the idle state layout
+    c_left, c_right = st.columns([3, 1.2])
+    with c_left:
+        st.markdown("""
+            <div class="cycle-card cycle-idle">
+                <div class="cycle-icon">🌿</div>
+                <div>
+                    <div class="cycle-title">No active cycle</div>
+                    <div class="cycle-sub">Log it here when it starts — I'll take it from there.</div>
+                </div>
             </div>
-        </div>
-    """, unsafe_allow_html=True)
-    if st.button("🩸 Period started today", key="start_cycle_btn"):
-        ok, err = airtable_post("Cycles", {"Start Date": today_str, "Notes": "Logged via Companion App Dashboard"})
-        if ok: st.cache_data.clear(); st.rerun()
-        else: st.error(f"Error saving cycle start: {err}")
+        """, unsafe_allow_html=True)
+    with c_right:
+        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+        if st.button("🩸 Period started", key="start_cycle_btn"):
+            ok, err = airtable_post("Cycles", {"Start Date": today_str, "Notes": "Logged via Companion App Dashboard"})
+            if ok: st.cache_data.clear(); st.rerun()
+            else: st.error(f"Error saving cycle start: {err}")
 
 # Backdate Cycle Fallback Manual Overrides
 with st.expander("🗓️ Retroactively log cycle dates"):
@@ -721,78 +732,6 @@ with st.expander("🗓️ Retroactively log cycle dates"):
                 st.success("Cycle history updated!")
                 st.cache_data.clear(); st.rerun()
             else: st.error(f"Error saving log: {err}")
-
-st.markdown('<div class="bloom-divider"><span>🌸</span></div>', unsafe_allow_html=True)
-
-# Meals and Weight Logging Accordions
-repeated_foods = [food for food, count in Counter(food_history_pool).items() if count >= 3]
-
-with st.expander("📝 Log food entries", expanded=False):
-    log_date_target = st.date_input("Logging for which day?", value=now.date(), key="diet_log_date")
-
-    if repeated_foods:
-        st.caption("⚡ Quick Log Favorites:")
-        cols = st.columns(min(len(repeated_foods), 3))
-        for idx, food in enumerate(repeated_foods[:6]):
-            if cols[idx % 3].button(f"➕ {food[:18]}", key=f"btn_{idx}"):
-                st.session_state["her_meal_input"] = food.strip().title()
-                st.rerun()
-
-    default_text = st.session_state.get("her_meal_input", "")
-    meal_input = st.text_area("What did you eat?", value=default_text, placeholder="e.g., 1 Banana, 2 Roti, 2 Eggs")
-    submit_meal = st.button("Log Daily Meal Block", key="cta_meal")
-
-    if submit_meal and meal_input:
-        with st.spinner("AI calculating customized macros..."):
-            try:
-                clean_meal_text = meal_input.strip().title()
-                res = client.models.generate_content(
-                    model='gemini-2.5-flash', contents=f"Analyze macros for this description: {clean_meal_text}",
-                    config=types.GenerateContentConfig(response_mime_type="application/json", response_schema=MacroData, temperature=0.1),
-                )
-                macros = json.loads(res.text)
-
-                current_time = now.strftime("%Y-%m-%d %I:%M %p") if log_date_target.strftime("%Y-%m-%d") == today_str else f"{log_date_target.strftime('%Y-%m-%d')} 10:00 PM"
-                data = {
-                    "Timestamp": current_time, "Food Items": clean_meal_text,
-                    "Calories": float(macros["calories"]), "Protein": float(macros["protein"]),
-                    "Carbs": float(macros["carbs"]), "Fats": float(macros["fats"])
-                }
-                ok, err = airtable_post("Diet", data)
-                if "her_meal_input" in st.session_state: del st.session_state["her_meal_input"]
-                if ok: st.success("Macros tracked successfully!"); st.cache_data.clear(); st.rerun()
-                else: st.error(f"Error saving to Airtable: {err}")
-            except Exception as e: st.error(f"Error: {e}")
-
-with st.expander("⚖️ Log weight metric", expanded=False):
-    with st.form("weight_form", clear_on_submit=True):
-        weight_date_target = st.date_input("Logging for which day?", value=now.date(), key="w_date_track")
-        weight_input = st.number_input("Weight (kg)", min_value=10.0, max_value=250.0, step=0.05, format="%.2f")
-        submit_weight = st.form_submit_button("Log Weight", key="cta_weight")
-
-        if submit_weight and weight_input > 10.0:
-            try:
-                current_time = now.strftime("%Y-%m-%d %I:%M %p") if weight_date_target.strftime("%Y-%m-%d") == today_str else f"{weight_date_target.strftime('%Y-%m-%d')} 10:00 PM"
-                ok, err = airtable_post("Weight", {"Timestamp": current_time, "Weight": float(weight_input)})
-                if ok: st.success("Weight recorded!"); st.cache_data.clear(); st.rerun()
-                else: st.error(f"Error saving to Airtable: {err}")
-            except Exception as e: st.error(f"Error: {e}")
-
-with st.expander("✨ Log a milestone / moment", expanded=False):
-    with st.form("moments_form", clear_on_submit=True):
-        moment_date = st.date_input("When did this happen?", value=now.date())
-        moment_text = st.text_input("What did you achieve?", placeholder="e.g., Left Sugar, Finished Exam Block")
-        show_on_top_check = st.checkbox("Pin to top highlight banner?", value=True)
-        if st.form_submit_button("Save Moment", key="cta_moment"):
-            try:
-                clean_moment = moment_text.strip().title()
-                ok, err = airtable_post("Moments", {"Date": moment_date.strftime("%Y-%m-%d"), "Moment": clean_moment, "Show On Top": show_on_top_check})
-                if ok: st.success("Milestone saved!"); st.cache_data.clear(); st.rerun()
-                else: st.error(f"Error saving to Airtable: {err}")
-            except Exception as e: st.error(f"Error: {e}")
-
-st.markdown('<div class="bloom-divider"><span>🌼</span></div>', unsafe_allow_html=True)
-
 # ==========================================
 # 8. ANALYTICS VISUALIZATIONS & TREND CURVES
 # ==========================================
