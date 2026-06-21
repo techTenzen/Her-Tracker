@@ -336,6 +336,7 @@ client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
 IST = timezone(timedelta(hours=5, minutes=30))
 now = datetime.now(IST)
 today_str = now.strftime("%Y-%m-%d")
+current_hour = now.hour  # <-- ADD THIS LINE HERE
 
 # ==========================================
 # AIRTABLE WRITE HELPERS
