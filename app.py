@@ -365,6 +365,19 @@ current_hour = now.hour
 day_of_year = now.timetuple().tm_yday
 
 # ==========================================
+# STATUS COLOR HELPER FUNCTION
+# ==========================================
+def get_status_color(val, low, high, reverse=False):
+    if reverse:
+        if val < low: return "#ef6f93"
+        if val <= high: return "#f4b942"
+        return "#1fa97a"
+    else:
+        if val < low: return "#1fa97a"
+        if val <= high: return "#f4b942"
+        return "#ef6f93"
+
+# ==========================================
 # AIRTABLE WRITE HELPERS
 # ==========================================
 def airtable_post(table, fields):
@@ -850,7 +863,7 @@ st.markdown('<div class="bloom-divider"><span>🌼</span></div>', unsafe_allow_h
 st.markdown('<div class="section-eyebrow">📈 Trends & Milestones</div>', unsafe_allow_html=True)
 CHART_FONT = "Quicksand"
 
-# Milestone Mapping Calendar - Customized with fresh grass-green background fill and sunflower elements
+# Milestone Mapping Calendar
 milestone_dates = {r.get("fields", {}).get("Date"): r.get("fields", {}).get("Moment") for r in moments_records if r.get("fields", {}).get("Date")}
 if milestone_dates:
     st.caption("🌻 Milestone calendar")
