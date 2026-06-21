@@ -215,21 +215,19 @@ st.markdown("""
         animation: floatIn 0.6s ease both;
     }
     
-    /* Blends from Soft Jade Mint through Milky Cream into soft muted Light Pink */
     .cycle-idle { 
         background: linear-gradient(90deg, 
             rgba(143, 227, 196, 0.45) 0%, 
-            rgba(255, 250, 246, 0.85) 50%, 
-            rgba(255, 209, 222, 0.45) 100
+            rgba(255, 250, 246, 0.70) 60%, 
+            rgba(255, 209, 222, 0.60) 100%
         ) !important;
     }
     
-    /* Active State Flow direction flipped gracefully */
     .cycle-active { 
         background: linear-gradient(90deg, 
-            rgba(255, 209, 222, 0.55) 0%, 
-            rgba(255, 250, 246, 0.85) 50%, 
-            rgba(143, 227, 196, 0.35) 100
+            rgba(255, 182, 200, 0.55) 0%, 
+            rgba(255, 250, 246, 0.70) 60%, 
+            rgba(143, 227, 196, 0.50) 100%
         ) !important;
     }
     
@@ -281,7 +279,6 @@ st.markdown("""
     .stButton>button:hover, .stFormSubmitButton>button:hover { transform: translateY(-1px); }
     .stButton>button:active, .stFormSubmitButton>button:active { transform: translateY(0px); }
 
-    /* Re-styled as elegant light pinkish lotus tone inputs */
     div[class*="st-key-start_cycle_btn"] button {
         background: linear-gradient(135deg, var(--lotus-light) 0%, var(--lotus-deep) 100%) !important;
         color: white !important;
@@ -649,16 +646,6 @@ for record in moments_records:
                 st.markdown(f'<div class="milestone-line">✨ <b>{m_text}:</b> {days_since} days running! Phenomenal work.</div>', unsafe_allow_html=True)
             except Exception: continue
 
-def get_status_color(val, low, high, reverse=False):
-    if reverse:
-        if val < low: return "#ef6f93"
-        if val <= high: return "#f4b942"
-        return "#1fa97a"
-    else:
-        if val < low: return "#1fa97a"
-        if val <= high: return "#f4b942"
-        return "#ef6f93"
-
 cal_color = get_status_color(today_cal, **THRESHOLDS["Calories"])
 carb_color = get_status_color(today_carbs, **THRESHOLDS["Carbs"])
 fat_color = get_status_color(today_fats, **THRESHOLDS["Fats"])
@@ -742,7 +729,6 @@ if is_period_active:
         </div>
     """, unsafe_allow_html=True)
     
-    # Text mutation logic for Active Cycle action button
     active_btn_label = "🌸 Ended today" if last_start_date == current_date_obj else "🌸 Mark as ended"
     
     if st.button(active_btn_label, key="end_cycle_btn"):
@@ -763,7 +749,6 @@ else:
         </div>
     """, unsafe_allow_html=True)
     
-    # Text mutation logic for Idle Cycle action button
     idle_btn_label = "🩸 Started today" if last_end_date == current_date_obj else "🩸 Period started today"
     
     if st.button(idle_btn_label, key="start_cycle_btn"):
@@ -849,8 +834,7 @@ with st.expander("✨ Log a milestone / moment", expanded=False):
         moment_date = st.date_input("When did this happen?", value=now.date())
         moment_text = st.text_input("What did you achieve?", placeholder="e.g., Left Sugar, Finished Exam Block")
         show_on_top_check = st.checkbox("Pin to top highlight banner?", value=True)
-        submit_moment = st.form_submit_button("Save Moment", key="cta_moment")
-        if submit_moment and moment_text:
+        if st.form_submit_button("Save Moment", key="cta_moment"):
             try:
                 clean_moment = moment_text.strip().title()
                 ok, err = airtable_post("Moments", {"Date": moment_date.strftime("%Y-%m-%d"), "Moment": clean_moment, "Show On Top": show_on_top_check})
@@ -866,16 +850,16 @@ st.markdown('<div class="bloom-divider"><span>🌼</span></div>', unsafe_allow_h
 st.markdown('<div class="section-eyebrow">📈 Trends & Milestones</div>', unsafe_allow_html=True)
 CHART_FONT = "Quicksand"
 
-# Milestone Mapping Calendar
+# Milestone Mapping Calendar - Customized with fresh grass-green background fill and sunflower elements
 milestone_dates = {r.get("fields", {}).get("Date"): r.get("fields", {}).get("Moment") for r in moments_records if r.get("fields", {}).get("Date")}
 if milestone_dates:
-    st.caption("🌸 Milestone calendar")
+    st.caption("🌻 Milestone calendar")
     df_milestones = pd.DataFrame(list(milestone_dates.items()), columns=["Date", "Milestone"])
-    df_milestones["Marker"] = "🌸"
+    df_milestones["Marker"] = "🌻"
 
     cal_dots = alt.Chart(df_milestones).mark_text(size=22, baseline='middle').encode(
         x=alt.X('Date:T', title=None, axis=alt.Axis(format='%b %d', grid=True)), text='Marker:N', tooltip='Milestone:N'
-    ).properties(height=80).configure_axis(labelFont=CHART_FONT, labelColor="#8a8694", gridColor="#00000010").configure_view(strokeOpacity=0)
+    ).properties(height=80).configure_axis(labelFont=CHART_FONT, labelColor="#8a8694", gridColor="#00000010").configure_view(strokeOpacity=0, fill='rgba(143, 227, 196, 0.25)')
     st.altair_chart(cal_dots, use_container_width=True)
 
 # Calorie Intake Curves
