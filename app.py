@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import requests
 import textwrap
 from datetime import datetime, timedelta, timezone
@@ -227,6 +228,36 @@ html, body, [class*="css"], .stMarkdown {
 }
 .cycle-active { background: linear-gradient(135deg, rgba(255,182,200,0.5), rgba(255,255,255,0.5)); box-shadow: 0 8px 20px rgba(239,111,147,0.16); }
 .cycle-idle { background: linear-gradient(135deg, rgba(143,227,196,0.4), rgba(255,255,255,0.5)); box-shadow: 0 8px 20px rgba(31,169,122,0.11); }
+
+div[class*="st-key-cycle_active_box"] {
+    background: linear-gradient(135deg, rgba(255,182,200,0.5), rgba(255,255,255,0.5));
+    box-shadow: 0 8px 20px rgba(239,111,147,0.16);
+    border-radius: 20px;
+    padding: 14px 18px;
+    margin-bottom: 10px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+div[class*="st-key-cycle_idle_box"] {
+    background: linear-gradient(135deg, rgba(143,227,196,0.4), rgba(255,255,255,0.5));
+    box-shadow: 0 8px 20px rgba(31,169,122,0.11);
+    border-radius: 20px;
+    padding: 14px 18px;
+    margin-bottom: 10px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+div[class*="st-key-cycle_active_box"] div[data-testid="stHorizontalBlock"],
+div[class*="st-key-cycle_idle_box"] div[data-testid="stHorizontalBlock"] {
+    align-items: center;
+}
+div[class*="st-key-cycle_active_box"] div[data-testid="column"]:last-child,
+div[class*="st-key-cycle_idle_box"] div[data-testid="column"]:last-child {
+    display: flex;
+    justify-content: flex-end;
+}
+div[class*="st-key-cycle_active_box"] .cycle-icon,
+div[class*="st-key-cycle_idle_box"] .cycle-icon { font-size: 27px; float: left; margin-right: 12px; }
 .cycle-icon { font-size: 27px; }
 .cycle-title { font-weight: 700; font-size: 14.5px; color: var(--ink); }
 .cycle-sub { font-size: 12.5px; color: var(--ink-soft); margin-top: 1px; }
@@ -452,73 +483,30 @@ if is_onboarded:
     }
 
 if not is_onboarded:
-    # Custom Keyframe Animations for a living, swaying pocket garden scene
-    st.markdown(textwrap.dedent("""
-    <style>
-    @keyframes swayLeft {
-        0%, 100% { transform: rotate(0deg); }
-        50% { transform: rotate(-7deg) skewX(-4deg); }
-    }
-    @keyframes swayRight {
-        0%, 100% { transform: rotate(0deg); }
-        50% { transform: rotate(8deg) skewX(5deg); }
-    }
-    @keyframes gentlePulse {
-        0%, 100% { transform: scale(1); opacity: 0.9; }
-        50% { transform: scale(1.05); opacity: 1; }
-    }
-
-    .garden-onboarding {
-        background: rgba(255,255,255,0.6);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255,255,255,0.75);
-        border-radius: 24px;
-        padding: 30px 28px 80px 28px;
-        margin-bottom: 20px;
-        position: relative;
-        overflow: hidden;
-        box-shadow: 0 12px 35px rgba(239, 111, 147, 0.12);
-        text-align: center;
-        animation: floatIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
-    }
-
-    .garden-floor {
-        position: absolute;
-        bottom: -5px;
-        left: 0;
-        width: 100%;
-        height: 65px;
-        display: flex;
-        justify-content: space-around;
-        align-items: flex-end;
-        padding: 0 15px;
-        pointer-events: none;
-        opacity: 0.9;
-        border-bottom-left-radius: 24px;
-        border-bottom-right-radius: 24px;
-    }
-
-    .garden-item {
-        font-size: 26px;
-        transform-origin: bottom center;
-        display: inline-block;
-        line-height: 1;
-    }
-
-    .item-grass-1 { animation: swayLeft 3.5s ease-in-out infinite; font-size: 22px; }
-    .item-flower-1 { animation: swayRight 4.2s ease-in-out infinite; animation-delay: 0.3s; }
-    .item-grass-2 { animation: swayLeft 2.9s ease-in-out infinite; animation-delay: 0.6s; font-size: 20px; }
-    .item-flower-2 { animation: swayLeft 4.8s ease-in-out infinite; animation-delay: 0.1s; }
-    .item-grass-3 { animation: swayRight 3.2s ease-in-out infinite; animation-delay: 0.8s; font-size: 24px; }
-    .item-flower-3 { animation: swayRight 4.0s ease-in-out infinite; animation-delay: 0.5s; }
-    .item-bear { animation: gentlePulse 3.0s ease-in-out infinite; font-size: 20px; padding-bottom: 12px; }
-    </style>
-
-    <div class="garden-onboarding">
-        <p class="note-text" style="font-size: 19px; font-weight: 600; margin-bottom: 8px;">🌸 Welcome to Addu's Garden 🧸</p>
-        <p style="font-size: 14.5px; color: var(--ink-soft); margin: 0; font-weight: 500;">Let's set up your custom health parameters baseline right now.</p>
-
+    # Garden header + swaying grass/flowers, rendered via components.html (a real
+    # sandboxed iframe) so it is guaranteed to render as HTML/CSS, never as text.
+    garden_html = """<html><head><style>
+    body { margin:0; font-family:'Quicksand',sans-serif; background:transparent; }
+    @keyframes swayLeft { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-10deg) skewX(-5deg); } }
+    @keyframes swayRight { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(11deg) skewX(6deg); } }
+    @keyframes gentlePulse { 0%,100% { transform: scale(1); opacity:0.9; } 50% { transform: scale(1.06); opacity:1; } }
+    .garden-onboarding { background: rgba(255,255,255,0.6); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.75); border-radius: 24px; padding: 26px 24px 70px 24px; box-shadow: 0 12px 35px rgba(239,111,147,0.12); text-align: center; box-sizing: border-box; }
+    .note-text { font-family:'Fraunces',serif; font-style:italic; font-weight:600; font-size:19px; color:#4a4654; margin:0 0 8px 0; }
+    .garden-sub { font-size:14.5px; color:#8a8694; margin:0; font-weight:500; }
+    .garden-floor { position: absolute; bottom: 6px; left: 0; width: 100%; display: flex; justify-content: space-around; align-items: flex-end; padding: 0 18px; box-sizing: border-box; }
+    .garden-item { font-size: 26px; transform-origin: bottom center; display: inline-block; }
+    .item-grass-1 { animation: swayLeft 2.6s ease-in-out infinite; font-size: 22px; }
+    .item-flower-1 { animation: swayRight 3.1s ease-in-out infinite; animation-delay: 0.3s; }
+    .item-grass-2 { animation: swayLeft 2.2s ease-in-out infinite; animation-delay: 0.6s; font-size: 20px; }
+    .item-flower-2 { animation: swayLeft 3.6s ease-in-out infinite; animation-delay: 0.1s; }
+    .item-grass-3 { animation: swayRight 2.4s ease-in-out infinite; animation-delay: 0.8s; font-size: 24px; }
+    .item-flower-3 { animation: swayRight 3.0s ease-in-out infinite; animation-delay: 0.5s; }
+    .item-bear { animation: gentlePulse 2.4s ease-in-out infinite; font-size: 20px; }
+    </style></head>
+    <body>
+    <div class="garden-onboarding" style="position:relative;">
+        <p class="note-text">🌸 Welcome to Addu's Garden 🧸</p>
+        <p class="garden-sub">Let's set up your custom health parameters baseline right now.</p>
         <div class="garden-floor">
             <span class="garden-item item-grass-1">🌱</span>
             <span class="garden-item item-flower-1">🌷</span>
@@ -529,7 +517,8 @@ if not is_onboarded:
             <span class="garden-item item-flower-3">🌼</span>
         </div>
     </div>
-    """), unsafe_allow_html=True)
+    </body></html>"""
+    components.html(garden_html, height=210, scrolling=False)
 
     with st.form("onboarding_form"):
         h_in = st.number_input("Height (cm)", min_value=100, max_value=250, value=160)
@@ -767,33 +756,35 @@ if cycle_banner:
     else: st.markdown(f'<div class="cycle-outlook outlook-{tone}">{text}</div>', unsafe_allow_html=True)
 
 if is_period_active:
-    st.markdown(textwrap.dedent("""
-    <div class="cycle-card cycle-active">
-        <div class="cycle-icon">🌷</div>
-        <div>
-            <div class="cycle-title">Cycle is active</div>
-            <div class="cycle-sub">Take it slow today, love — warm tea, rest, zero pressure.</div>
-        </div>
-    </div>
-    """), unsafe_allow_html=True)
-    if st.button("🌸 Mark as ended", key="end_cycle_btn"):
-        ok, err = airtable_patch("Cycles", active_row_id, {"End Date": today_str})
-        if ok: st.cache_data.clear(); st.rerun()
-        else: st.error(f"Error updating cycle: {err}")
+    with st.container(key="cycle_active_box"):
+        c_left, c_right = st.columns([3, 1])
+        with c_left:
+            st.markdown(
+                '<div class="cycle-icon">🌷</div>'
+                '<div><div class="cycle-title">Cycle is active</div>'
+                '<div class="cycle-sub">Take it slow today, love — warm tea, rest, zero pressure.</div></div>',
+                unsafe_allow_html=True
+            )
+        with c_right:
+            if st.button("🌸 End", key="end_cycle_btn"):
+                ok, err = airtable_patch("Cycles", active_row_id, {"End Date": today_str})
+                if ok: st.cache_data.clear(); st.rerun()
+                else: st.error(f"Error updating cycle: {err}")
 else:
-    st.markdown(textwrap.dedent("""
-    <div class="cycle-card cycle-idle">
-        <div class="cycle-icon">🌿</div>
-        <div>
-            <div class="cycle-title">No active cycle</div>
-            <div class="cycle-sub">Tap below whenever it starts — I'll take it from there.</div>
-        </div>
-    </div>
-    """), unsafe_allow_html=True)
-    if st.button("🩸 Period started today", key="start_cycle_btn"):
-        ok, err = airtable_post("Cycles", {"Start Date": today_str, "Notes": "Logged via Companion App Dashboard"})
-        if ok: st.cache_data.clear(); st.rerun()
-        else: st.error(f"Error saving cycle start: {err}")
+    with st.container(key="cycle_idle_box"):
+        c_left, c_right = st.columns([3, 1])
+        with c_left:
+            st.markdown(
+                '<div class="cycle-icon">🌿</div>'
+                '<div><div class="cycle-title">No active cycle</div>'
+                '<div class="cycle-sub">Tap to log whenever it starts.</div></div>',
+                unsafe_allow_html=True
+            )
+        with c_right:
+            if st.button("🩸 Started", key="start_cycle_btn"):
+                ok, err = airtable_post("Cycles", {"Start Date": today_str, "Notes": "Logged via Companion App Dashboard"})
+                if ok: st.cache_data.clear(); st.rerun()
+                else: st.error(f"Error saving cycle start: {err}")
 
 # Backdate Cycle Fallback Manual Overrides
 with st.expander("🗓️ Retroactively log cycle dates"):
