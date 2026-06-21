@@ -1,7 +1,5 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import requests
-import textwrap
 from datetime import datetime, timedelta, timezone
 import json
 from collections import Counter
@@ -16,341 +14,311 @@ from pydantic import BaseModel, Field
 # ==========================================
 st.set_page_config(page_title="Addu's Garden", page_icon="🌷", layout="centered")
 
-st.markdown(textwrap.dedent("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Quicksand:wght@400;500;600;700&display=swap');
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Quicksand:wght@400;500;600;700&display=swap');
 
-:root {
-    --emerald: #1fa97a;
-    --emerald-deep: #168a63;
-    --emerald-soft: #8fe3c4;
-    --rose: #ef6f93;
-    --rose-deep: #e0527b;
-    --rose-soft: #ffd1de;
-    --gold: #f4b942;
-    --cream: #fffaf6;
-    --ink: #34313c;
-    --ink-soft: #8a8694;
-}
+    :root {
+        --emerald: #1fa97a;
+        --emerald-deep: #168a63;
+        --emerald-soft: #8fe3c4;
+        --rose: #ef6f93;
+        --rose-deep: #e0527b;
+        --rose-soft: #ffd1de;
+        --gold: #f4b942;
+        --cream: #fffaf6;
+        --ink: #34313c;
+        --ink-soft: #8a8694;
+    }
 
-html, body, [class*="css"], .stMarkdown {
-    font-family: 'Quicksand', -apple-system, BlinkMacSystemFont, sans-serif;
-    color: var(--ink);
-}
+    html, body, [class*="css"], .stMarkdown {
+        font-family: 'Quicksand', -apple-system, BlinkMacSystemFont, sans-serif;
+        color: var(--ink);
+    }
 
-.stApp {
-    background: linear-gradient(160deg, #e1f8ee 0%, #fdeef4 42%, #fff3e6 75%, #ffe7ef 100%);
-    background-attachment: fixed;
-}
-.stApp::before, .stApp::after {
-    content: "";
-    position: fixed;
-    border-radius: 50%;
-    filter: blur(85px);
-    opacity: 0.45;
-    z-index: 0;
-    pointer-events: none;
-}
-.stApp::before { width: 400px; height: 400px; background: radial-gradient(circle, var(--emerald-soft), transparent 70%); top: -130px; left: -110px; animation: drift 15s ease-in-out infinite; }
-.stApp::after { width: 460px; height: 460px; background: radial-gradient(circle, var(--rose-soft), transparent 70%); bottom: -150px; right: -130px; animation: drift 18s ease-in-out infinite reverse; }
+    .stApp {
+        background: linear-gradient(160deg, #e1f8ee 0%, #fdeef4 42%, #fff3e6 75%, #ffe7ef 100%);
+        background-attachment: fixed;
+    }
+    .stApp::before, .stApp::after {
+        content: "";
+        position: fixed;
+        border-radius: 50%;
+        filter: blur(85px);
+        opacity: 0.45;
+        z-index: 0;
+        pointer-events: none;
+    }
+    .stApp::before { width: 400px; height: 400px; background: radial-gradient(circle, var(--emerald-soft), transparent 70%); top: -130px; left: -110px; animation: drift 15s ease-in-out infinite; }
+    .stApp::after { width: 460px; height: 460px; background: radial-gradient(circle, var(--rose-soft), transparent 70%); bottom: -150px; right: -130px; animation: drift 18s ease-in-out infinite reverse; }
 
-@keyframes drift {
-    0%, 100% { transform: translate(0,0) scale(1); }
-    50% { transform: translate(25px, -20px) scale(1.06); }
-}
+    @keyframes drift {
+        0%, 100% { transform: translate(0,0) scale(1); }
+        50% { transform: translate(25px, -20px) scale(1.06); }
+    }
 
-@keyframes floatIn {
-    from { opacity: 0; transform: translateY(14px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes blossom {
-    from { opacity: 0; transform: scale(0.86); }
-    to   { opacity: 1; transform: scale(1); }
-}
-@keyframes flicker {
-    0%, 100% { transform: scale(1) rotate(0deg); }
-    50% { transform: scale(1.15) rotate(-4deg); }
-}
+    @keyframes floatIn {
+        from { opacity: 0; transform: translateY(14px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes blossom {
+        from { opacity: 0; transform: scale(0.86); }
+        to   { opacity: 1; transform: scale(1); }
+    }
+    @keyframes flicker {
+        0%, 100% { transform: scale(1) rotate(0deg); }
+        50% { transform: scale(1.15) rotate(-4deg); }
+    }
 
-/* ---- Title ---- */
-.app-title {
-    font-family: 'Fraunces', serif;
-    font-weight: 600;
-    font-size: 30px;
-    text-align: center;
-    margin: 4px 0 0 0;
-    background: linear-gradient(100deg, var(--emerald-deep) 0%, var(--rose-deep) 35%, var(--gold) 50%, var(--rose-deep) 65%, var(--emerald-deep) 100%);
-    background-size: 250% auto;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    animation: floatIn 0.6s ease both, shimmerText 7s linear infinite 0.6s;
-}
-@keyframes shimmerText {
-    0% { background-position: 0% 50%; }
-    100% { background-position: 250% 50%; }
-}
-.app-subtitle {
-    text-align: center;
-    font-size: 12px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--ink-soft);
-    margin-bottom: 18px;
-    animation: floatIn 0.6s ease both;
-}
+    /* ---- Title ---- */
+    .app-title {
+        font-family: 'Fraunces', serif;
+        font-weight: 600;
+        font-size: 30px;
+        text-align: center;
+        margin: 4px 0 0 0;
+        background: linear-gradient(100deg, var(--emerald-deep) 0%, var(--rose-deep) 35%, var(--gold) 50%, var(--rose-deep) 65%, var(--emerald-deep) 100%);
+        background-size: 250% auto;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: floatIn 0.6s ease both, shimmerText 7s linear infinite 0.6s;
+    }
+    @keyframes shimmerText {
+        0% { background-position: 0% 50%; }
+        100% { background-position: 250% 50%; }
+    }
+    .app-subtitle {
+        text-align: center;
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        margin-bottom: 18px;
+        animation: floatIn 0.6s ease both;
+    }
 
-/* ---- Greeting "note" card ---- */
-.note-card {
-    background: rgba(255,255,255,0.55);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid rgba(255,255,255,0.7);
-    border-radius: 22px;
-    padding: 24px 26px 20px 26px;
-    margin-bottom: 16px;
-    position: relative;
-    animation: floatIn 0.7s ease both, breathe 5s ease-in-out infinite 0.7s;
-}
-@keyframes breathe {
-    0%, 100% { box-shadow: 0 10px 30px rgba(239,111,147,0.14); }
-    50% { box-shadow: 0 16px 40px rgba(239,111,147,0.24); }
-}
-.note-card::before {
-    content: "🌿";
-    position: absolute;
-    top: -15px; left: 22px;
-    font-size: 18px;
-    background: var(--cream);
-    border-radius: 50%;
-    width: 32px; height: 32px;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-}
-.note-text {
-    font-family: 'Fraunces', serif;
-    font-style: italic;
-    font-weight: 500;
-    font-size: 17px;
-    line-height: 1.65;
-    color: #4a4654;
-    text-align: center;
-    margin: 0;
-}
+    /* ---- Greeting "note" card ---- */
+    .note-card {
+        background: rgba(255,255,255,0.55);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(255,255,255,0.7);
+        border-radius: 22px;
+        padding: 24px 26px 20px 26px;
+        margin-bottom: 16px;
+        position: relative;
+        animation: floatIn 0.7s ease both, breathe 5s ease-in-out infinite 0.7s;
+    }
+    @keyframes breathe {
+        0%, 100% { box-shadow: 0 10px 30px rgba(239,111,147,0.14); }
+        50% { box-shadow: 0 16px 40px rgba(239,111,147,0.24); }
+    }
+    .note-card::before {
+        content: "🌿";
+        position: absolute;
+        top: -15px; left: 22px;
+        font-size: 18px;
+        background: var(--cream);
+        border-radius: 50%;
+        width: 32px; height: 32px;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    }
+    .note-text {
+        font-family: 'Fraunces', serif;
+        font-style: italic;
+        font-weight: 500;
+        font-size: 17px;
+        line-height: 1.65;
+        color: #4a4654;
+        text-align: center;
+        margin: 0;
+    }
 
-/* ---- Streak pill ---- */
-.streak-pill {
-    display: inline-flex; align-items: center; gap: 7px;
-    background: linear-gradient(135deg, #fff3e0, #ffe3ec);
-    border-radius: 999px;
-    padding: 7px 18px;
-    font-weight: 700;
-    font-size: 13.5px;
-    box-shadow: 0 4px 14px rgba(244,185,66,0.22);
-    margin-bottom: 8px;
-    animation: floatIn 0.7s ease both;
-}
-.streak-pill .flame { display: inline-block; animation: flicker 1.8s ease-in-out infinite; }
+    /* ---- Streak pill ---- */
+    .streak-pill {
+        display: inline-flex; align-items: center; gap: 7px;
+        background: linear-gradient(135deg, #fff3e0, #ffe3ec);
+        border-radius: 999px;
+        padding: 7px 18px;
+        font-weight: 700;
+        font-size: 13.5px;
+        box-shadow: 0 4px 14px rgba(244,185,66,0.22);
+        margin-bottom: 8px;
+        animation: floatIn 0.7s ease both;
+    }
+    .streak-pill .flame { display: inline-block; animation: flicker 1.8s ease-in-out infinite; }
 
-.milestone-line {
-    font-size: 13.5px;
-    color: var(--ink-soft);
-    margin: 3px 2px;
-    animation: floatIn 0.6s ease both;
-}
+    .milestone-line {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        margin: 3px 2px;
+        animation: floatIn 0.6s ease both;
+    }
 
-/* ---- Section labels ---- */
-.section-eyebrow {
-    font-weight: 700;
-    font-size: 12.5px;
-    letter-spacing: 0.10em;
-    text-transform: uppercase;
-    color: var(--ink-soft);
-    margin: 26px 2px 12px 2px;
-}
+    /* ---- Section labels ---- */
+    .section-eyebrow {
+        font-weight: 700;
+        font-size: 12.5px;
+        letter-spacing: 0.10em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        margin: 26px 2px 12px 2px;
+    }
 
-/* ---- Bloom macro cards ---- */
-.bloom-card {
-    background: rgba(255,255,255,0.55);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.65);
-    border-radius: 20px;
-    padding: 18px 8px 14px 8px;
-    text-align: center;
-    margin: 6px 0 10px 0;
-    box-shadow: 0 8px 22px rgba(0,0,0,0.05);
-    animation: blossom 0.5s ease both;
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
-}
-.bloom-card:hover { transform: translateY(-3px); box-shadow: 0 14px 28px rgba(0,0,0,0.08); }
-.bloom-ring {
-    width: 72px; height: 72px;
-    border-radius: 50%;
-    margin: 0 auto 10px auto;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 0 0 5px rgba(255,255,255,0.55);
-}
-.bloom-inner {
-    width: 54px; height: 54px;
-    border-radius: 50%;
-    background: var(--cream);
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
-}
-.bloom-icon { font-size: 21px; }
-.bloom-label { font-weight: 700; font-size: 13px; color: var(--ink); margin-top: 1px; letter-spacing: 0.01em; }
-.bloom-value { font-family: 'Fraunces', serif; font-weight: 600; font-size: 19px; color: var(--ink); margin-top: 1px; }
-.bloom-unit { font-size: 11.5px; font-weight: 500; color: var(--ink-soft); margin-left: 2px; }
-.bloom-target { font-size: 11px; color: var(--ink-soft); margin-top: 1px; }
+    /* ---- Bloom macro cards ---- */
+    .bloom-card {
+        background: rgba(255,255,255,0.55);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255,255,255,0.65);
+        border-radius: 20px;
+        padding: 18px 8px 14px 8px;
+        text-align: center;
+        margin: 6px 0 10px 0;
+        box-shadow: 0 8px 22px rgba(0,0,0,0.05);
+        animation: blossom 0.5s ease both;
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    .bloom-card:hover { transform: translateY(-3px); box-shadow: 0 14px 28px rgba(0,0,0,0.08); }
+    .bloom-ring {
+        width: 72px; height: 72px;
+        border-radius: 50%;
+        margin: 0 auto 10px auto;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 0 0 5px rgba(255,255,255,0.55);
+    }
+    .bloom-inner {
+        width: 54px; height: 54px;
+        border-radius: 50%;
+        background: var(--cream);
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
+    }
+    .bloom-icon { font-size: 21px; }
+    .bloom-label { font-weight: 700; font-size: 13px; color: var(--ink); margin-top: 1px; letter-spacing: 0.01em; }
+    .bloom-value { font-family: 'Fraunces', serif; font-weight: 600; font-size: 19px; color: var(--ink); margin-top: 1px; }
+    .bloom-unit { font-size: 11.5px; font-weight: 500; color: var(--ink-soft); margin-left: 2px; }
+    .bloom-target { font-size: 11px; color: var(--ink-soft); margin-top: 1px; }
 
-/* ---- Flourish divider ---- */
-.bloom-divider {
-    display: flex; align-items: center; justify-content: center;
-    margin: 8px 0 6px 0;
-    color: var(--ink-soft);
-}
-.bloom-divider::before, .bloom-divider::after {
-    content: ""; flex: 1; height: 1px;
-    background: linear-gradient(to right, transparent, rgba(0,0,0,0.12), transparent);
-}
-.bloom-divider span { padding: 0 12px; font-size: 14px; }
+    /* ---- Flourish divider ---- */
+    .bloom-divider {
+        display: flex; align-items: center; justify-content: center;
+        margin: 8px 0 6px 0;
+        color: var(--ink-soft);
+    }
+    .bloom-divider::before, .bloom-divider::after {
+        content: ""; flex: 1; height: 1px;
+        background: linear-gradient(to right, transparent, rgba(0,0,0,0.12), transparent);
+    }
+    .bloom-divider span { padding: 0 12px; font-size: 14px; }
 
-/* ---- Cycle companion card ---- */
-.cycle-card {
-    display: flex; align-items: center; gap: 14px;
-    border-radius: 20px;
-    padding: 16px 18px;
-    margin-bottom: 10px;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    animation: floatIn 0.6s ease both;
-}
-.cycle-active { background: linear-gradient(135deg, rgba(255,182,200,0.5), rgba(255,255,255,0.5)); box-shadow: 0 8px 20px rgba(239,111,147,0.16); }
-.cycle-idle { background: linear-gradient(135deg, rgba(143,227,196,0.4), rgba(255,255,255,0.5)); box-shadow: 0 8px 20px rgba(31,169,122,0.11); }
+    /* ---- Cycle companion card ---- */
+    .cycle-card {
+        display: flex; align-items: center; gap: 14px;
+        border-radius: 20px;
+        padding: 16px 18px;
+        margin-bottom: 10px;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        animation: floatIn 0.6s ease both;
+    }
+    .cycle-active { background: linear-gradient(135deg, rgba(255,182,200,0.5), rgba(255,255,255,0.5)); box-shadow: 0 8px 20px rgba(239,111,147,0.16); }
+    .cycle-idle { background: linear-gradient(135deg, rgba(143,227,196,0.4), rgba(255,255,255,0.5)); box-shadow: 0 8px 20px rgba(31,169,122,0.11); }
+    .cycle-icon { font-size: 27px; }
+    .cycle-title { font-weight: 700; font-size: 14.5px; color: var(--ink); }
+    .cycle-sub { font-size: 12.5px; color: var(--ink-soft); margin-top: 1px; }
 
-div[class*="st-key-cycle_active_box"] {
-    background: linear-gradient(135deg, rgba(255,182,200,0.5), rgba(255,255,255,0.5));
-    box-shadow: 0 8px 20px rgba(239,111,147,0.16);
-    border-radius: 20px;
-    padding: 14px 18px;
-    margin-bottom: 10px;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-}
-div[class*="st-key-cycle_idle_box"] {
-    background: linear-gradient(135deg, rgba(143,227,196,0.4), rgba(255,255,255,0.5));
-    box-shadow: 0 8px 20px rgba(31,169,122,0.11);
-    border-radius: 20px;
-    padding: 14px 18px;
-    margin-bottom: 10px;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-}
-div[class*="st-key-cycle_active_box"] div[data-testid="stHorizontalBlock"],
-div[class*="st-key-cycle_idle_box"] div[data-testid="stHorizontalBlock"] {
-    align-items: center;
-}
-div[class*="st-key-cycle_active_box"] div[data-testid="column"]:last-child,
-div[class*="st-key-cycle_idle_box"] div[data-testid="column"]:last-child {
-    display: flex;
-    justify-content: flex-end;
-}
-div[class*="st-key-cycle_active_box"] .cycle-icon,
-div[class*="st-key-cycle_idle_box"] .cycle-icon { font-size: 27px; float: left; margin-right: 12px; }
-.cycle-icon { font-size: 27px; }
-.cycle-title { font-weight: 700; font-size: 14.5px; color: var(--ink); }
-.cycle-sub { font-size: 12.5px; color: var(--ink-soft); margin-top: 1px; }
+    /* Cycle outlook banner */
+    .cycle-outlook {
+        border-radius: 14px;
+        padding: 10px 16px;
+        margin-bottom: 10px;
+        font-weight: 600;
+        font-size: 13px;
+        animation: floatIn 0.5s ease both;
+    }
+    .outlook-late { background: linear-gradient(135deg, rgba(239,111,147,0.20), rgba(239,111,147,0.08)); color: var(--rose-deep); border: 1px solid rgba(239,111,147,0.25); }
+    .outlook-due  { background: linear-gradient(135deg, rgba(244,185,66,0.22), rgba(244,185,66,0.08)); color: #8a6512; border: 1px solid rgba(244,185,66,0.3); }
+    .outlook-warn { background: linear-gradient(135deg, rgba(239,111,147,0.16), rgba(255,255,255,0.3)); color: var(--rose-deep); border: 1px solid rgba(239,111,147,0.2); }
+    .outlook-good { background: linear-gradient(135deg, rgba(31,169,122,0.18), rgba(31,169,122,0.06)); color: var(--emerald-deep); border: 1px solid rgba(31,169,122,0.25); }
 
-/* Cycle outlook banner */
-.cycle-outlook {
-    border-radius: 14px;
-    padding: 10px 16px;
-    margin-bottom: 10px;
-    font-weight: 600;
-    font-size: 13px;
-    animation: floatIn 0.5s ease both;
-}
-.outlook-late { background: linear-gradient(135deg, rgba(239,111,147,0.20), rgba(239,111,147,0.08)); color: var(--rose-deep); border: 1px solid rgba(239,111,147,0.25); }
-.outlook-due  { background: linear-gradient(135deg, rgba(244,185,66,0.22), rgba(244,185,66,0.08)); color: #8a6512; border: 1px solid rgba(244,185,66,0.3); }
-.outlook-warn { background: linear-gradient(135deg, rgba(239,111,147,0.16), rgba(255,255,255,0.3)); color: var(--rose-deep); border: 1px solid rgba(239,111,147,0.2); }
-.outlook-good { background: linear-gradient(135deg, rgba(31,169,122,0.18), rgba(31,169,122,0.06)); color: var(--emerald-deep); border: 1px solid rgba(31,169,122,0.25); }
+    /* ---- Buttons ---- */
+    .stButton>button, .stFormSubmitButton>button {
+        border-radius: 999px;
+        font-weight: 700;
+        font-family: 'Quicksand', sans-serif;
+        border: none;
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+    .stButton>button:hover, .stFormSubmitButton>button:hover { transform: translateY(-1px); }
+    .stButton>button:active, .stFormSubmitButton>button:active { transform: translateY(0px); }
 
-/* ---- Buttons ---- */
-.stButton>button, .stFormSubmitButton>button {
-    border-radius: 999px;
-    font-weight: 700;
-    font-family: 'Quicksand', sans-serif;
-    border: none;
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
-}
-.stButton>button:hover, .stFormSubmitButton>button:hover { transform: translateY(-1px); }
-.stButton>button:active, .stFormSubmitButton>button:active { transform: translateY(0px); }
+    div[class*="st-key-start_cycle_btn"] button {
+        background: linear-gradient(135deg, var(--rose) 0%, var(--rose-deep) 100%) !important;
+        color: white !important;
+        padding: 0 24px; height: 2.5em;
+        box-shadow: 0 6px 16px rgba(239,111,147,0.32);
+        position: relative; overflow: hidden;
+    }
+    div[class*="st-key-end_cycle_btn"] button {
+        background: linear-gradient(135deg, var(--emerald) 0%, var(--emerald-deep) 100%) !important;
+        color: white !important;
+        padding: 0 24px; height: 2.5em;
+        box-shadow: 0 6px 16px rgba(31,169,122,0.28);
+        position: relative; overflow: hidden;
+    }
 
-div[class*="st-key-start_cycle_btn"] button {
-    background: linear-gradient(135deg, var(--rose) 0%, var(--rose-deep) 100%) !important;
-    color: white !important;
-    padding: 0 24px; height: 2.5em;
-    box-shadow: 0 6px 16px rgba(239,111,147,0.32);
-    position: relative; overflow: hidden;
-}
-div[class*="st-key-end_cycle_btn"] button {
-    background: linear-gradient(135deg, var(--emerald) 0%, var(--emerald-deep) 100%) !important;
-    color: white !important;
-    padding: 0 24px; height: 2.5em;
-    box-shadow: 0 6px 16px rgba(31,169,122,0.28);
-    position: relative; overflow: hidden;
-}
+    div[class*="st-key-cta_"] button {
+        width: 100%;
+        height: 2.9em;
+        background: linear-gradient(135deg, var(--emerald) 0%, var(--rose) 100%) !important;
+        color: white !important;
+        box-shadow: 0 8px 18px rgba(239,111,147,0.24);
+        position: relative; overflow: hidden;
+    }
 
-div[class*="st-key-cta_"] button {
-    width: 100%;
-    height: 2.9em;
-    background: linear-gradient(135deg, var(--emerald) 0%, var(--rose) 100%) !important;
-    color: white !important;
-    box-shadow: 0 8px 18px rgba(239,111,147,0.24);
-    position: relative; overflow: hidden;
-}
+    div[class*="st-key-start_cycle_btn"] button::after,
+    div[class*="st-key-end_cycle_btn"] button::after,
+    div[class*="st-key-cta_"] button::after {
+        content: "";
+        position: absolute; top: 0; left: -60%;
+        width: 45%; height: 100%;
+        background: linear-gradient(120deg, transparent, rgba(255,255,255,0.5), transparent);
+        transform: skewX(-20deg);
+        transition: left 0.6s ease;
+    }
+    div[class*="st-key-start_cycle_btn"] button:hover::after,
+    div[class*="st-key-end_cycle_btn"] button:hover::after,
+    div[class*="st-key-cta_"] button:hover::after {
+        left: 130%;
+    }
 
-div[class*="st-key-start_cycle_btn"] button::after,
-div[class*="st-key-end_cycle_btn"] button::after,
-div[class*="st-key-cta_"] button::after {
-    content: "";
-    position: absolute; top: 0; left: -60%;
-    width: 45%; height: 100%;
-    background: linear-gradient(120deg, transparent, rgba(255,255,255,0.5), transparent);
-    transform: skewX(-20deg);
-    transition: left 0.6s ease;
-}
-div[class*="st-key-start_cycle_btn"] button:hover::after,
-div[class*="st-key-end_cycle_btn"] button:hover::after,
-div[class*="st-key-cta_"] button:hover::after {
-    left: 130%;
-}
+    div[class*="st-key-btn_"] button {
+        background: rgba(255,255,255,0.6) !important;
+        color: var(--ink) !important;
+        border: 1px solid rgba(0,0,0,0.07) !important;
+        padding: 0 14px; height: 2.15em;
+        font-size: 12.5px;
+        font-weight: 600;
+        box-shadow: none;
+    }
+    div[class*="st-key-btn_"] button:hover { background: rgba(255,255,255,0.92) !important; }
 
-div[class*="st-key-btn_"] button {
-    background: rgba(255,255,255,0.6) !important;
-    color: var(--ink) !important;
-    border: 1px solid rgba(0,0,0,0.07) !important;
-    padding: 0 14px; height: 2.15em;
-    font-size: 12.5px;
-    font-weight: 600;
-    box-shadow: none;
-}
-div[class*="st-key-btn_"] button:hover { background: rgba(255,255,255,0.92) !important; }
+    div[data-testid="stExpander"] {
+        background: rgba(255,255,255,0.42) !important;
+        border-radius: 18px !important;
+        border: 1px solid rgba(255,255,255,0.6) !important;
+        backdrop-filter: blur(8px);
+        margin-bottom: 12px;
+        overflow: hidden;
+    }
+    div[data-testid="stExpander"] summary { font-weight: 700 !important; }
 
-div[data-testid="stExpander"] {
-    background: rgba(255,255,255,0.42) !important;
-    border-radius: 18px !important;
-    border: 1px solid rgba(255,255,255,0.6) !important;
-    backdrop-filter: blur(8px);
-    margin-bottom: 12px;
-    overflow: hidden;
-}
-div[data-testid="stExpander"] summary { font-weight: 700 !important; }
-
-hr { border-color: rgba(0,0,0,0.06) !important; }
-</style>
-"""), unsafe_allow_html=True)
+    hr { border-color: rgba(0,0,0,0.06) !important; }
+    </style>
+""", unsafe_allow_html=True)
 
 class MacroData(BaseModel):
     calories: float = Field(description="Total energy value in kcal")
@@ -444,17 +412,17 @@ if cycle_records:
     latest_row = cycle_records[0]
     active_row_id = latest_row.get("id")
     latest_fields = latest_row.get("fields", {})
-
+    
     s_str = latest_fields.get("Start Date", "")
     e_str = latest_fields.get("End Date", "")
-
+    
     if s_str:
         try: last_start_date = datetime.strptime(s_str, "%Y-%m-%d").date()
         except Exception: pass
     if e_str:
         try: last_end_date = datetime.strptime(e_str, "%Y-%m-%d").date()
         except Exception: pass
-
+        
     if s_str and not e_str:
         is_period_active = True
 
@@ -463,63 +431,8 @@ if cycle_records:
 # ==========================================
 is_onboarded = bool(profile_map.get("Calories"))
 
-if is_onboarded:
-    # Pull saved targets from the Profile table and build threshold bands around them.
-    # "low" = the floor of the healthy/on-track zone, "high" = the target/ceiling.
-    def _to_float(key, fallback):
-        try: return float(profile_map.get(key, fallback))
-        except Exception: return fallback
-
-    saved_cal = _to_float("Calories", 1800)
-    saved_carbs = _to_float("Carbs", 200)
-    saved_protein = _to_float("Protein", 140)
-    saved_fats = _to_float("Fats", 70)
-
-    THRESHOLDS = {
-        "Calories": {"low": saved_cal * 0.7, "high": saved_cal},
-        "Carbs": {"low": saved_carbs * 0.6, "high": saved_carbs},
-        "Protein": {"low": saved_protein, "high": saved_protein * 1.3},
-        "Fats": {"low": saved_fats * 0.6, "high": saved_fats},
-    }
-
 if not is_onboarded:
-    # Garden header + swaying grass/flowers, rendered via components.html (a real
-    # sandboxed iframe) so it is guaranteed to render as HTML/CSS, never as text.
-    garden_html = """<html><head><style>
-    body { margin:0; font-family:'Quicksand',sans-serif; background:transparent; }
-    @keyframes swayLeft { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-10deg) skewX(-5deg); } }
-    @keyframes swayRight { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(11deg) skewX(6deg); } }
-    @keyframes gentlePulse { 0%,100% { transform: scale(1); opacity:0.9; } 50% { transform: scale(1.06); opacity:1; } }
-    .garden-onboarding { background: rgba(255,255,255,0.6); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.75); border-radius: 24px; padding: 26px 24px 70px 24px; box-shadow: 0 12px 35px rgba(239,111,147,0.12); text-align: center; box-sizing: border-box; }
-    .note-text { font-family:'Fraunces',serif; font-style:italic; font-weight:600; font-size:19px; color:#4a4654; margin:0 0 8px 0; }
-    .garden-sub { font-size:14.5px; color:#8a8694; margin:0; font-weight:500; }
-    .garden-floor { position: absolute; bottom: 6px; left: 0; width: 100%; display: flex; justify-content: space-around; align-items: flex-end; padding: 0 18px; box-sizing: border-box; }
-    .garden-item { font-size: 26px; transform-origin: bottom center; display: inline-block; }
-    .item-grass-1 { animation: swayLeft 2.6s ease-in-out infinite; font-size: 22px; }
-    .item-flower-1 { animation: swayRight 3.1s ease-in-out infinite; animation-delay: 0.3s; }
-    .item-grass-2 { animation: swayLeft 2.2s ease-in-out infinite; animation-delay: 0.6s; font-size: 20px; }
-    .item-flower-2 { animation: swayLeft 3.6s ease-in-out infinite; animation-delay: 0.1s; }
-    .item-grass-3 { animation: swayRight 2.4s ease-in-out infinite; animation-delay: 0.8s; font-size: 24px; }
-    .item-flower-3 { animation: swayRight 3.0s ease-in-out infinite; animation-delay: 0.5s; }
-    .item-bear { animation: gentlePulse 2.4s ease-in-out infinite; font-size: 20px; }
-    </style></head>
-    <body>
-    <div class="garden-onboarding" style="position:relative;">
-        <p class="note-text">🌸 Welcome to Addu's Garden 🧸</p>
-        <p class="garden-sub">Let's set up your custom health parameters baseline right now.</p>
-        <div class="garden-floor">
-            <span class="garden-item item-grass-1">🌱</span>
-            <span class="garden-item item-flower-1">🌷</span>
-            <span class="garden-item item-grass-2">🌿</span>
-            <span class="garden-item item-bear">🧸</span>
-            <span class="garden-item item-flower-2">🌸</span>
-            <span class="garden-item item-grass-3">🌱</span>
-            <span class="garden-item item-flower-3">🌼</span>
-        </div>
-    </div>
-    </body></html>"""
-    components.html(garden_html, height=210, scrolling=False)
-
+    st.markdown('<div class="note-card"><p class="note-text">🌸 Welcome to Addu\'s Garden 🧸<br>Let\'s set up your custom health parameters baseline right now.</p></div>', unsafe_allow_html=True)
     with st.form("onboarding_form"):
         h_in = st.number_input("Height (cm)", min_value=100, max_value=250, value=160)
         w_in = st.number_input("Weight (kg)", min_value=30.0, max_value=200.0, value=55.0, step=0.1)
@@ -564,6 +477,14 @@ if not is_onboarded:
                     st.cache_data.clear(); st.rerun()
             except Exception as e: st.error(f"Setup Error: {e}")
     st.stop()
+
+THRESHOLDS = {
+    "Calories": {"low": float(profile_map.get("Calories", 1400)) - 50, "high": float(profile_map.get("Calories", 1400)), "reverse": False},
+    "Carbs": {"low": float(profile_map.get("Carbs", 130)) - 10, "high": float(profile_map.get("Carbs", 130)), "reverse": False},
+    "Fats": {"low": float(profile_map.get("Fats", 40)) - 5, "high": float(profile_map.get("Fats", 40)), "reverse": False},
+    "Protein": {"low": float(profile_map.get("Protein", 80)), "high": float(profile_map.get("Protein", 80)) + 15, "reverse": True}
+}
+
 # ==========================================
 # 5. HIGH-END ROTATING PHRASE COMPLIMENTS ENGINE
 # ==========================================
@@ -724,16 +645,16 @@ prot_target = THRESHOLDS["Protein"]["low"]
 def render_bloom_card(icon, label, value, unit, target, color, delay=0.0):
     try: pct = max(0, min((value / target) * 100, 100)) if target else 0
     except Exception: pct = 0
-    st.markdown(textwrap.dedent(f"""
-    <div class="bloom-card" style="animation-delay:{delay}s;">
-        <div class="bloom-ring" style="background: conic-gradient({color} {pct:.1f}%, rgba(0,0,0,0.07) 0);">
-            <div class="bloom-inner"><span class="bloom-icon">{icon}</span></div>
+    st.markdown(f"""
+        <div class="bloom-card" style="animation-delay:{delay}s;">
+            <div class="bloom-ring" style="background: conic-gradient({color} {pct:.1f}%, rgba(0,0,0,0.07) 0);">
+                <div class="bloom-inner"><span class="bloom-icon">{icon}</span></div>
+            </div>
+            <div class="bloom-label">{label}</div>
+            <div class="bloom-value">{value:.0f}<span class="bloom-unit">{unit}</span></div>
+            <div class="bloom-target">of {target:.0f}{unit} goal</div>
         </div>
-        <div class="bloom-label">{label}</div>
-        <div class="bloom-value">{value:.0f}<span class="bloom-unit">{unit}</span></div>
-        <div class="bloom-target">of {target:.0f}{unit} goal</div>
-    </div>
-    """), unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
 col1, col2 = st.columns(2)
 with col1:
@@ -756,35 +677,33 @@ if cycle_banner:
     else: st.markdown(f'<div class="cycle-outlook outlook-{tone}">{text}</div>', unsafe_allow_html=True)
 
 if is_period_active:
-    with st.container(key="cycle_active_box"):
-        c_left, c_right = st.columns([3, 1])
-        with c_left:
-            st.markdown(
-                '<div class="cycle-icon">🌷</div>'
-                '<div><div class="cycle-title">Cycle is active</div>'
-                '<div class="cycle-sub">Take it slow today, love — warm tea, rest, zero pressure.</div></div>',
-                unsafe_allow_html=True
-            )
-        with c_right:
-            if st.button("🌸 End", key="end_cycle_btn"):
-                ok, err = airtable_patch("Cycles", active_row_id, {"End Date": today_str})
-                if ok: st.cache_data.clear(); st.rerun()
-                else: st.error(f"Error updating cycle: {err}")
+    st.markdown("""
+        <div class="cycle-card cycle-active">
+            <div class="cycle-icon">🌷</div>
+            <div>
+                <div class="cycle-title">Cycle is active</div>
+                <div class="cycle-sub">Take it slow today, love — warm tea, rest, zero pressure.</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+    if st.button("🌸 Mark as ended", key="end_cycle_btn"):
+        ok, err = airtable_patch("Cycles", active_row_id, {"End Date": today_str})
+        if ok: st.cache_data.clear(); st.rerun()
+        else: st.error(f"Error updating cycle: {err}")
 else:
-    with st.container(key="cycle_idle_box"):
-        c_left, c_right = st.columns([3, 1])
-        with c_left:
-            st.markdown(
-                '<div class="cycle-icon">🌿</div>'
-                '<div><div class="cycle-title">No active cycle</div>'
-                '<div class="cycle-sub">Tap to log whenever it starts.</div></div>',
-                unsafe_allow_html=True
-            )
-        with c_right:
-            if st.button("🩸 Started", key="start_cycle_btn"):
-                ok, err = airtable_post("Cycles", {"Start Date": today_str, "Notes": "Logged via Companion App Dashboard"})
-                if ok: st.cache_data.clear(); st.rerun()
-                else: st.error(f"Error saving cycle start: {err}")
+    st.markdown("""
+        <div class="cycle-card cycle-idle">
+            <div class="cycle-icon">🌿</div>
+            <div>
+                <div class="cycle-title">No active cycle</div>
+                <div class="cycle-sub">Tap below whenever it starts — I'll take it from there.</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+    if st.button("🩸 Period started today", key="start_cycle_btn"):
+        ok, err = airtable_post("Cycles", {"Start Date": today_str, "Notes": "Logged via Companion App Dashboard"})
+        if ok: st.cache_data.clear(); st.rerun()
+        else: st.error(f"Error saving cycle start: {err}")
 
 # Backdate Cycle Fallback Manual Overrides
 with st.expander("🗓️ Retroactively log cycle dates"):
@@ -796,7 +715,7 @@ with st.expander("🗓️ Retroactively log cycle dates"):
         if submit_c:
             payload = {"Start Date": c_start.strftime("%Y-%m-%d"), "Notes": c_notes}
             if c_end: payload["End Date"] = c_end.strftime("%Y-%m-%d")
-
+            
             ok, err = airtable_post("Cycles", payload)
             if ok:
                 st.success("Cycle history updated!")
